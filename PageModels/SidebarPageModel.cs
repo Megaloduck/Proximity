@@ -53,15 +53,12 @@ namespace Proximity.PageModels
         // COMMANDS
         // -------------------------------
         public ICommand NavigateToDashboardCommand { get; private set; }
-        public ICommand NavigateToOverviewCommand { get; private set; }
+        public ICommand NavigateToDiscoverCommand { get; private set; }
 
-        public ICommand NavigateToTools1Command { get; private set; }
-        public ICommand NavigateToTools2Command { get; private set; }
-        public ICommand NavigateToTools3Command { get; private set; }
-        public ICommand NavigateToTools4Command { get; private set; }
-        public ICommand NavigateToTools5Command { get; private set; }
-        public ICommand NavigateToTools6Command { get; private set; }
-        public ICommand NavigateToTools7Command { get; private set; }
+        public ICommand NavigateToContactsCommand { get; private set; }
+        public ICommand NavigateToRoomsCommand { get; private set; }
+        public ICommand NavigateToAuditoriumCommand { get; private set; }
+
 
         public ICommand NavigateToUsersCommand { get; private set; }
         public ICommand NavigateToSettingsCommand { get; private set; }
@@ -73,16 +70,12 @@ namespace Proximity.PageModels
         {
             // Main Menu
             NavigateToDashboardCommand = new Command(() => NavigateAction?.Invoke(new DashboardPage()));
-            NavigateToOverviewCommand = new Command(() => NavigateAction?.Invoke(new OverviewPage()));
+            NavigateToDiscoverCommand = new Command(() => NavigateAction?.Invoke(new DiscoverPage()));
 
             // Tools
-            NavigateToTools1Command = new Command(() => NavigateAction?.Invoke(new Tools1Page()));
-            NavigateToTools2Command = new Command(() => NavigateAction?.Invoke(new Tools2Page()));
-            NavigateToTools3Command = new Command(() => NavigateAction?.Invoke(new Tools3Page()));
-            NavigateToTools4Command = new Command(() => NavigateAction?.Invoke(new Tools4Page()));
-            NavigateToTools5Command = new Command(() => NavigateAction?.Invoke(new Tools5Page()));
-            NavigateToTools6Command = new Command(() => NavigateAction?.Invoke(new Tools6Page()));
-            NavigateToTools7Command = new Command(() => NavigateAction?.Invoke(new Tools7Page()));
+            NavigateToContactsCommand = new Command(() => NavigateAction?.Invoke(new ContactsPage()));
+            NavigateToRoomsCommand = new Command(() => NavigateAction?.Invoke(new RoomsPage()));
+            NavigateToAuditoriumCommand = new Command(() => NavigateAction?.Invoke(new AuditoriumPage()));
 
             // System
             NavigateToUsersCommand = new Command(() => NavigateAction?.Invoke(new UsersPage()));

@@ -5,6 +5,9 @@
         public AppShell()
         {
             InitializeComponent();
+
+            // Start the app at LoginPage
+            GoToAsync("//LoginPage");
         }
     }
 }

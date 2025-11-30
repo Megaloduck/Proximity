@@ -3,12 +3,20 @@
     x:Class="Proximity.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:pages="clr-namespace:Proximity.Pages"
+    xmlns:mainmenu="clr-namespace:Proximity.Pages.MainMenu"
+    xmlns:system="clr-namespace:Proximity.Pages.System"
     xmlns:local="clr-namespace:Proximity"
+    Shell.FlyoutBehavior="Disabled"
+    Shell.NavBarIsVisible="False"
     Title="Proximity">
 
-    <ShellContent
-        Title="Home"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+    <!-- LOGIN PAGE -->
+    <ShellContent Route="LoginPage"
+               ContentTemplate="{DataTemplate pages:LoginPage}" />
+
+    <!-- SIDEBAR -->
+    <ShellContent Route="SidebarPage"
+               ContentTemplate="{DataTemplate pages:SidebarPage}" />
 
 </Shell>
