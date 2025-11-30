@@ -25,7 +25,7 @@ namespace Proximity.PageModels
         public ICommand DisconnectCommand { get; }
         public ICommand RefreshCommand { get; }
 
-        // Constructor for DI
+        // ONLY Constructor - receives DI services
         public DiscoverPageModel(DiscoveryService discoveryService, ChatService chatService)
         {
             _discoveryService = discoveryService;
@@ -40,20 +40,7 @@ namespace Proximity.PageModels
             RefreshPeers();
         }
 
-        // Parameterless constructor for XAML designer
-        public DiscoverPageModel() : this(new DiscoveryService(), CreateDefaultChatService())
-        {
-        }
-
-        private static ChatService CreateDefaultChatService()
-        {
-            var userName = Preferences.Get("UserName", "User");
-            var discoveryService = new DiscoveryService();
-            var chatService = new ChatService(discoveryService.GetLocalId(), userName);
-            chatService.StartListening();
-            return chatService;
-        }
-
+        // REST OF THE CODE STAYS THE SAME...
         private void HookDiscoveryEvents()
         {
             _discoveryService.PeerDiscovered += OnPeerDiscovered;

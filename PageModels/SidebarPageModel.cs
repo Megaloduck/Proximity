@@ -34,8 +34,8 @@ namespace Proximity.PageModels
             {
                 if (_themeService.IsDarkMode != value)
                 {
-                    _themeService.IsDarkMode = value;   // ThemeService applies the actual theme
-                    OnPropertyChanged();                // Update UI binding
+                    _themeService.IsDarkMode = value;
+                    OnPropertyChanged();
                 }
             }
         }
@@ -59,21 +59,51 @@ namespace Proximity.PageModels
         public ICommand NavigateToRoomsCommand { get; private set; }
         public ICommand NavigateToAuditoriumCommand { get; private set; }
 
-
         public ICommand NavigateToUsersCommand { get; private set; }
         public ICommand NavigateToSettingsCommand { get; private set; }
 
         // -------------------------------
-        // BUILD COMMANDS
+        // BUILD COMMANDS - FIXED TO USE DI
         // -------------------------------
         private void BuildNavigationCommands()
         {
             // Main Menu
             NavigateToDashboardCommand = new Command(() => NavigateAction?.Invoke(new DashboardPage()));
-            NavigateToDiscoverCommand = new Command(() => NavigateAction?.Invoke(new DiscoverPage()));
 
-            // Tools
-            NavigateToContactsCommand = new Command(() => NavigateAction?.Invoke(new ContactsPage()));
+            // FIXED: Get DI services for DiscoverPage
+            NavigateToDiscoverCommand = new Command(() =>
+            {
+                var app = Application.Current as App;
+                var services = app?.Handler?.MauiContext?.Services;
+
+                if (services != null)
+                {
+                    var discoveryService = services.GetService(typeof(DiscoveryService)) as DiscoveryService;
+                    var chatService = services.GetService(typeof(ChatService)) as ChatService;
+
+                    if (discoveryService != null && chatService != null)
+                    {
+                        NavigateAction?.Invoke(new DiscoverPage(discoveryService, chatService));
+                    }
+                }
+            });
+
+            // Tools - ContactsPage needs ChatService from DI when opened from menu
+            NavigateToContactsCommand = new Command(() =>
+            {
+                var app = Application.Current as App;
+                var services = app?.Handler?.MauiContext?.Services;
+
+                if (services != null)
+                {
+                    var chatService = services.GetService(typeof(ChatService)) as ChatService;
+                    if (chatService != null)
+                    {
+                        NavigateAction?.Invoke(new ContactsPage(null, chatService));
+                    }
+                }
+            });
+
             NavigateToRoomsCommand = new Command(() => NavigateAction?.Invoke(new RoomsPage()));
             NavigateToAuditoriumCommand = new Command(() => NavigateAction?.Invoke(new AuditoriumPage()));
 

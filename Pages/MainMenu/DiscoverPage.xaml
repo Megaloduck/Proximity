@@ -5,9 +5,6 @@
              x:Class="Proximity.Pages.MainMenu.DiscoverPage"
              Title="Discover Peers">
 
-    <ContentPage.BindingContext>
-        <vm:DiscoverPageModel />
-    </ContentPage.BindingContext>
 
     <Grid RowDefinitions="Auto,Auto,*" 
           Padding="20"

@@ -7,31 +7,19 @@ namespace Proximity.Pages.MainMenu;
 
 public partial class DiscoverPage : ContentPage
 {
-    private DiscoverPageModel? _pageModel;
+    private DiscoverPageModel? _viewModel;
 
-    // Constructor for DI
+    // Constructor for DI - THIS IS THE ONE THAT GETS CALLED
     public DiscoverPage(DiscoveryService discoveryService, ChatService chatService)
     {
         InitializeComponent();
-        _pageModel = new DiscoverPageModel(discoveryService, chatService);
-        BindingContext = _pageModel;
-    }
-
-    // Parameterless constructor for XAML designer
-    public DiscoverPage() : this(new DiscoveryService(), CreateDefaultChatService())
-    {
-    }
-
-    private static ChatService CreateDefaultChatService()
-    {
-        var userName = Preferences.Get("UserName", "User");
-        var discoveryService = new DiscoveryService();
-        return new ChatService(discoveryService.GetLocalId(), userName);
+        _viewModel = new DiscoverPageModel(discoveryService, chatService);
+        BindingContext = _viewModel;
     }
 
     private void OnSaveNameClicked(object sender, EventArgs e)
     {
-        _pageModel?.SaveUserName();
+        _viewModel?.SaveUserName();
         DisplayAlert("Success", "Username saved!", "OK");
     }
 
@@ -39,7 +27,7 @@ public partial class DiscoverPage : ContentPage
     {
         if (sender is Button button && button.BindingContext is PeerInfo peer)
         {
-            // Get services from DI
+            // Get ChatService from DI
             var chatService = Handler?.MauiContext?.Services.GetService<ChatService>();
             if (chatService != null)
             {
