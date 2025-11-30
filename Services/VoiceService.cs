@@ -58,10 +58,11 @@ namespace Proximity.Services
         {
             try
             {
-                // Initialize Opus codec
-                _encoder = OpusEncoder.Create(SampleRate, Channels, OpusApplication.OPUS_APPLICATION_VOIP);
+                // Initialize Opus codec - FIXED: Proper Create method call
+                _encoder = new OpusEncoder(SampleRate, Channels, OpusApplication.OPUS_APPLICATION_VOIP);
                 _encoder.Bitrate = 24000; // 24 kbps
-                _decoder = OpusDecoder.Create(SampleRate, Channels);
+
+                _decoder = new OpusDecoder(SampleRate, Channels);
 
                 // Initialize UDP
                 _udpClient = new UdpClient(_port);

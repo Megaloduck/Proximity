@@ -2,11 +2,94 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Proximity.Pages.Tools.ContactsPage"
-             Title="ContactsPage">
-    <VerticalStackLayout>
-        <Label 
-            Text="Welcome to .NET MAUI!"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center" />
-    </VerticalStackLayout>
+             Title="{Binding PeerName}">
+
+    <Grid RowDefinitions="*,Auto" 
+          Padding="10"
+          RowSpacing="10">
+
+        <!-- Messages List -->
+        <Border Grid.Row="0"
+                BackgroundColor="{DynamicResource CardBackgroundColor}"
+                Stroke="{DynamicResource BorderColor}"
+                StrokeThickness="1">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="12"/>
+            </Border.StrokeShape>
+
+            <CollectionView ItemsSource="{Binding Messages}"
+                           EmptyView="No messages yet. Start chatting!">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Padding="10" ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <!-- Sender indicator -->
+                            <BoxView Grid.Column="0"
+                                    WidthRequest="4"
+                                    CornerRadius="2"
+                                    Color="{DynamicResource PrimaryColor}"/>
+
+                            <VerticalStackLayout Grid.Column="1" Spacing="5">
+                                <!-- Sender name and timestamp -->
+                                <HorizontalStackLayout Spacing="10">
+                                    <Label Text="{Binding SenderName}"
+                                          FontSize="14"
+                                          FontAttributes="Bold"
+                                          TextColor="{DynamicResource PrimaryColor}"/>
+
+                                    <Label Text="{Binding Timestamp, StringFormat='{0:HH:mm:ss}'}"
+                                          FontSize="12"
+                                          TextColor="{DynamicResource TertiaryTextColor}"/>
+                                </HorizontalStackLayout>
+
+                                <!-- Message content -->
+                                <Label Text="{Binding Content}"
+                                      FontSize="14"
+                                      TextColor="{DynamicResource PrimaryTextColor}"/>
+                            </VerticalStackLayout>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Border>
+
+        <!-- Input Section -->
+        <Border Grid.Row="1"
+                BackgroundColor="{DynamicResource CardBackgroundColor}"
+                Stroke="{DynamicResource BorderColor}"
+                StrokeThickness="1"
+                Padding="10">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="12"/>
+            </Border.StrokeShape>
+
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                <!-- Message input -->
+                <Entry Grid.Column="0"
+                       Text="{Binding MessageText}"
+                       Placeholder="Type a message..."
+                       ReturnCommand="{Binding SendCommand}"/>
+
+                <!-- Voice button -->
+                <Button Grid.Column="1"
+                        Text="🎤"
+                        Command="{Binding ToggleVoiceCommand}"
+                        BackgroundColor="{DynamicResource SecondaryColor}"
+                        Padding="15,8">
+                    <Button.Triggers>
+                        <DataTrigger TargetType="Button" 
+                                   Binding="{Binding IsVoiceActive}" 
+                                   Value="True">
+                            <Setter Property="BackgroundColor" Value="{DynamicResource DangerColor}"/>
+                        </DataTrigger>
+                    </Button.Triggers>
+                </Button>
+
+                <!-- Send button -->
+                <Button Grid.Column="2"
+                        Text="Send"
+                        Command="{Binding SendCommand}"
+                        Padding="20,8"/>
+            </Grid>
+        </Border>
+    </Grid>
 </ContentPage>

@@ -3,10 +3,32 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Proximity.Pages.LoginPage"
              Title="LoginPage">
-    <VerticalStackLayout>
-        <Label 
-            Text="Welcome to .NET MAUI!hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center" />
-    </VerticalStackLayout>
+    
+    <Border Background="{DynamicResource CardBackgroundColor}"
+            Padding="10,5"
+            StrokeShape="RoundRectangle 7.5"
+            StrokeThickness="0"
+            Margin="0,5">
+
+        <VerticalStackLayout>
+
+            <Picker x:Name="RolePicker"
+                    Title="Select Role"
+                    ItemsSource="{Binding Roles}"
+                    ItemDisplayBinding="{Binding DisplayName}"
+                    SelectedItem="{Binding SelectedRole}"
+                    FontSize="13"
+                    TextColor="{DynamicResource PrimaryColor}" />
+
+            <Button Text="Login"
+                    Margin="0,10,0,0"
+                    Command="{Binding LoginCommand}"
+                    BackgroundColor="{DynamicResource PrimaryColor}"
+                    TextColor="White"
+                    CornerRadius="5"
+                    HeightRequest="40"/>
+
+        </VerticalStackLayout>
+    </Border>
+
 </ContentPage>
