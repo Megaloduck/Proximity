@@ -7,14 +7,14 @@ namespace Proximity.Pages.MainMenu;
 
 public partial class DiscoverPage : ContentPage
 {
-    private DiscoverPageModel? _viewModel;
+    private DiscoverPageModel? _pageModel;
 
     // Constructor for DI
     public DiscoverPage(DiscoveryService discoveryService, ChatService chatService)
     {
         InitializeComponent();
-        _viewModel = new DiscoverPageModel(discoveryService, chatService);
-        BindingContext = _viewModel;
+        _pageModel = new DiscoverPageModel(discoveryService, chatService);
+        BindingContext = _pageModel;
     }
 
     // Parameterless constructor for XAML designer
@@ -31,7 +31,7 @@ public partial class DiscoverPage : ContentPage
 
     private void OnSaveNameClicked(object sender, EventArgs e)
     {
-        _viewModel?.SaveUserName();
+        _pageModel?.SaveUserName();
         DisplayAlert("Success", "Username saved!", "OK");
     }
 
