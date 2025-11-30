@@ -4,7 +4,7 @@ using Proximity.Pages;
 using Proximity.Pages.MainMenu;
 using Proximity.Pages.System;
 using Proximity.Pages.Tools;
-
+using Proximity.Services;
 
 namespace Proximity
 {
@@ -27,6 +27,22 @@ namespace Proximity
             builder.Services.AddLogging(configure => configure.AddDebug());
 #endif
 
+            // Register Services as Singletons (shared state across app)
+            builder.Services.AddSingleton<DiscoveryService>();
+            builder.Services.AddSingleton<ChatService>(sp =>
+            {
+                var discoveryService = sp.GetRequiredService<DiscoveryService>();
+                var userName = Preferences.Get("UserName", "User_" + Random.Shared.Next(1000, 9999));
+                var chatService = new ChatService(discoveryService.GetLocalId(), userName);
+                chatService.StartListening();
+                return chatService;
+            });
+            builder.Services.AddSingleton<VoiceService>(sp =>
+            {
+                var voiceService = new VoiceService();
+                voiceService.Initialize();
+                return voiceService;
+            });
 
             // Core Fundamental Pages
             builder.Services.AddSingleton<LoginPage>();
@@ -37,20 +53,17 @@ namespace Proximity
             // Main Menu Pages
             builder.Services.AddTransient<DashboardPage>();
             builder.Services.AddTransient<DiscoverPage>();
+            builder.Services.AddTransient<DiscoverPageModel>();
 
             // Tools Pages
             builder.Services.AddTransient<ContactsPage>();
+            builder.Services.AddTransient<ContactsPageModel>();
             builder.Services.AddTransient<RoomsPage>();
             builder.Services.AddTransient<AuditoriumPage>();
 
-            // Main Menu Pages            
+            // System Pages            
             builder.Services.AddTransient<UsersPage>();
             builder.Services.AddTransient<SettingsPage>();
-
-
-
-
-
 
             return builder.Build();
         }
