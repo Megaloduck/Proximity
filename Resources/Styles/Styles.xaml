@@ -70,7 +70,7 @@
     <Style x:Key="SidebarSectionHeader" TargetType="Label">
         <Setter Property="FontSize" Value="11"/>
         <Setter Property="FontAttributes" Value="Bold"/>
-        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource Gray600}, Dark={StaticResource SecondaryDarkText}}"/>
+        <Setter Property="TextColor" Value="{DynamicResource SecondaryTextColor}"/>
         <Setter Property="Margin" Value="12,12,12,4"/>
         <Setter Property="TextTransform" Value="Uppercase"/>
     </Style>

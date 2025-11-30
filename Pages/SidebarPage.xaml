@@ -25,7 +25,7 @@
 
                     <VerticalStackLayout Spacing="0">
                         <HorizontalStackLayout Spacing="12" HorizontalOptions="Start">
-                            <Border Background="{StaticResource PrimaryColor}"
+                            <Border Background="{DynamicResource PrimaryColor}"
                                     WidthRequest="40"
                                     HeightRequest="40"
                                     Padding="0"
@@ -61,7 +61,7 @@
                                 <Label Text="Duck Species"                                       
                                        FontSize="13"
                                        FontAttributes="Bold"
-                                       TextColor="{StaticResource Primary}"/>
+                                       TextColor="{StaticResource PrimaryColor}"/>
                             </HorizontalStackLayout>
                         </Border>
 
