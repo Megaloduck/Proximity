@@ -64,7 +64,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Voice Settings -->
+            <!-- Audio Settings -->
             <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
                     Stroke="{DynamicResource BorderColor}"
                     StrokeThickness="1"
@@ -74,11 +74,57 @@
                 </Border.StrokeShape>
 
                 <VerticalStackLayout Spacing="15">
-                    <Label Text="Voice Settings"
+                    <Label Text="Audio Settings"
                            FontSize="20"
                            FontAttributes="Bold"
                            TextColor="{DynamicResource PrimaryTextColor}"/>
 
+                    <!-- Input Device -->
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="Input Device (Microphone)"
+                               FontSize="14"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                        <Picker ItemsSource="{Binding InputDevices}"
+                                SelectedItem="{Binding SelectedInputDevice}"
+                                Title="Select microphone"
+                                FontSize="14"/>
+                    </VerticalStackLayout>
+
+                    <!-- Output Device -->
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="Output Device (Speaker)"
+                               FontSize="14"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                        <Picker ItemsSource="{Binding OutputDevices}"
+                                SelectedItem="{Binding SelectedOutputDevice}"
+                                Title="Select speaker"
+                                FontSize="14"/>
+                    </VerticalStackLayout>
+
+                    <!-- Loopback Test -->
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Microphone Test"
+                               FontSize="14"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+
+                        <HorizontalStackLayout Spacing="10">
+                            <Button Text="{Binding LoopbackButtonText}"
+                                    Command="{Binding ToggleLoopbackCommand}"
+                                    HorizontalOptions="Start"
+                                    Padding="15,8"/>
+
+                            <Label Text="{Binding LoopbackStatus}"
+                                   VerticalOptions="Center"
+                                   FontSize="14"
+                                   TextColor="{DynamicResource SuccessColor}"/>
+                        </HorizontalStackLayout>
+
+                        <Label Text="Click 'Start Test' to hear your microphone through speakers. Speak to test if your microphone is working."
+                               FontSize="12"
+                               TextColor="{DynamicResource TertiaryTextColor}"/>
+                    </VerticalStackLayout>
+
+                    <!-- Push-to-Talk -->
                     <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
                         <Label Text="Push-to-Talk Mode"
                                FontSize="16"
@@ -99,56 +145,53 @@
             <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
                     Stroke="{DynamicResource BorderColor}"
                     StrokeThickness="1"
-                    Padding="20">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12"/>
-                </Border.StrokeShape>
+                    Padding="20" 
+                    StrokeShape ="RoundRectangle 12">       
 
                 <VerticalStackLayout Spacing="15">
                     <Label Text="Network Information"
-           FontSize="20"
-           FontAttributes="Bold"
-           TextColor="{DynamicResource PrimaryTextColor}" />
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}" />
 
                     <Grid ColumnDefinitions="Auto,*"
-          RowDefinitions="Auto,Auto,Auto,Auto"
-          RowSpacing="10"
-          ColumnSpacing="15">
-
+                          RowDefinitions="Auto,Auto,Auto,Auto"
+                          RowSpacing="10"
+                          ColumnSpacing="15">
+                        
                         <!-- Discovery Port -->
                         <Label Grid.Row="0" Grid.Column="0" 
-               Text="Discovery Port:"
-               TextColor="{DynamicResource SecondaryTextColor}" />
+                               Text="Discovery Port:"
+                               TextColor="{DynamicResource SecondaryTextColor}" />
                         <Label Grid.Row="0" Grid.Column="1" 
-               Text="9001 (UDP)"
-               TextColor="{DynamicResource PrimaryTextColor}" />
-
+                               Text="9001 (UDP)"
+                               TextColor="{DynamicResource PrimaryTextColor}" />
+                        
                         <!-- Chat Port -->
                         <Label Grid.Row="1" Grid.Column="0" 
-               Text="Chat Port:"
-               TextColor="{DynamicResource SecondaryTextColor}" />
+                               Text="Chat Port:"
+                               TextColor="{DynamicResource SecondaryTextColor}" />
                         <Label Grid.Row="1" Grid.Column="1" 
-               Text="9002 (TCP)"
-               TextColor="{DynamicResource PrimaryTextColor}" />
-
+                               Text="9002 (TCP)"
+                               TextColor="{DynamicResource PrimaryTextColor}" />
+                        
                         <!-- Voice Port -->
                         <Label Grid.Row="2" Grid.Column="0" 
-               Text="Voice Port:"
-               TextColor="{DynamicResource SecondaryTextColor}" />
+                               Text="Voice Port:"
+                               TextColor="{DynamicResource SecondaryTextColor}" />
                         <Label Grid.Row="2" Grid.Column="1" 
-               Text="9003 (UDP)"
-               TextColor="{DynamicResource PrimaryTextColor}" />
-
+                               Text="9003 (UDP)"
+                               TextColor="{DynamicResource PrimaryTextColor}" />
+                        
                         <!-- Local Peer ID -->
                         <Label Grid.Row="3" Grid.Column="0" 
-               Text="Your ID:"
-               TextColor="{DynamicResource SecondaryTextColor}" />
+                               Text="Your ID:"
+                               TextColor="{DynamicResource SecondaryTextColor}" />
                         <Label Grid.Row="3" Grid.Column="1" 
-               Text="{Binding LocalPeerId}"
-               TextColor="{DynamicResource PrimaryTextColor}" />
+                               Text="{Binding LocalPeerId}"
+                               TextColor="{DynamicResource PrimaryTextColor}" />
                     </Grid>
-                </VerticalStackLayout>
-
+                </VerticalStackLayout>                
             </Border>
 
             <!-- About -->
