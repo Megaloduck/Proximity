@@ -9,6 +9,7 @@ namespace Proximity.PageModels
     public class ContactsPageModel : BasePageModel
     {
         private readonly ChatService _chatService;
+        private readonly VoiceService _voiceService;
         private readonly PeerInfo? _targetPeer;
         private string _messageText = string.Empty;
         private bool _isVoiceActive;
@@ -36,6 +37,11 @@ namespace Proximity.PageModels
         {
             _targetPeer = peer;
             _chatService = chatService;
+
+            // Get VoiceService from DI
+            var app = Application.Current;
+            var services = app?.Handler?.MauiContext?.Services;
+            _voiceService = services?.GetService(typeof(VoiceService)) as VoiceService;
 
             SendCommand = new Command(SendMessage, () => !string.IsNullOrWhiteSpace(MessageText));
             ToggleVoiceCommand = new Command(ToggleVoice);
@@ -92,8 +98,66 @@ namespace Proximity.PageModels
 
         private void ToggleVoice()
         {
+            if (_voiceService == null)
+            {
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Application.Current!.MainPage!.DisplayAlert(
+                        "Voice Not Available",
+                        "Voice service is not initialized. Please restart the app.",
+                        "OK"
+                    );
+                });
+                return;
+            }
+
             IsVoiceActive = !IsVoiceActive;
-            // TODO: Implement voice service integration
+
+            try
+            {
+                if (IsVoiceActive)
+                {
+                    // Start voice transmission
+                    if (_voiceService.IsPushToTalk)
+                    {
+                        _voiceService.StartPushToTalk();
+                    }
+                    else
+                    {
+                        _voiceService.StartCapture();
+                    }
+
+                    System.Diagnostics.Debug.WriteLine("Voice chat started");
+                }
+                else
+                {
+                    // Stop voice transmission
+                    if (_voiceService.IsPushToTalk)
+                    {
+                        _voiceService.StopPushToTalk();
+                    }
+                    else
+                    {
+                        _voiceService.StopCapture();
+                    }
+
+                    System.Diagnostics.Debug.WriteLine("Voice chat stopped");
+                }
+            }
+            catch (Exception ex)
+            {
+                IsVoiceActive = false;
+                System.Diagnostics.Debug.WriteLine($"Voice error: {ex.Message}");
+
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Application.Current!.MainPage!.DisplayAlert(
+                        "Voice Error",
+                        $"Failed to toggle voice: {ex.Message}",
+                        "OK"
+                    );
+                });
+            }
         }
     }
 }

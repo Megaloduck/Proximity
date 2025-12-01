@@ -100,8 +100,8 @@
                             </HorizontalStackLayout>
                         </Border>
 
-                        <!-- TOOLS Section -->
-                        <Label Text="Tools" Style="{StaticResource SidebarSectionHeader}" Margin="12,16,12,4"/>
+                        <!-- FEATURES Section -->
+                        <Label Text="Features" Style="{StaticResource SidebarSectionHeader}" Margin="12,16,12,4"/>
 
                         <Border Style="{StaticResource SidebarItemStyle}">
                             <Border.GestureRecognizers>
