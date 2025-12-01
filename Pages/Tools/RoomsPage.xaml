@@ -2,11 +2,28 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Proximity.Pages.Tools.RoomsPage"
-             Title="RoomsPage">
-    <VerticalStackLayout>
-        <Label 
-            Text="Welcome to .NET MAUI!"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center" />
+              Title="Rooms">
+
+    <VerticalStackLayout Padding="40" Spacing="20" VerticalOptions="Center">
+        <Label Text="🏠"
+               FontSize="64"
+               HorizontalOptions="Center"/>
+
+        <Label Text="Group Rooms"
+               FontSize="28"
+               FontAttributes="Bold"
+               HorizontalOptions="Center"
+               TextColor="{DynamicResource PrimaryTextColor}"/>
+
+        <Label Text="Create and join group chat rooms"
+               FontSize="16"
+               HorizontalOptions="Center"
+               TextColor="{DynamicResource SecondaryTextColor}"/>
+
+        <Label Text="Coming Soon in v1.3"
+               FontSize="14"
+               HorizontalOptions="Center"
+               Margin="0,20,0,0"
+               TextColor="{DynamicResource AccentColor}"/>
     </VerticalStackLayout>
 </ContentPage>

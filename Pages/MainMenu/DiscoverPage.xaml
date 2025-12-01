@@ -6,7 +6,7 @@
              Title="Discover Peers">
 
 
-    <Grid RowDefinitions="Auto,Auto,*" 
+    <Grid RowDefinitions="Auto,*" 
           Padding="20"
           RowSpacing="15">
 
@@ -15,10 +15,8 @@
                 BackgroundColor="{DynamicResource CardBackgroundColor}"
                 Stroke="{DynamicResource BorderColor}"
                 StrokeThickness="1"
+                StrokeShape="RoundRectangle 12"
                 Padding="20">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="12"/>
-            </Border.StrokeShape>
 
             <VerticalStackLayout Spacing="10">
                 <Label Text="Your Username"
@@ -36,112 +34,115 @@
             </VerticalStackLayout>
         </Border>
 
-        <!-- Refresh Button -->
-        <HorizontalStackLayout Grid.Row="1" 
-                              Spacing="10"
-                              HorizontalOptions="End">
-            <Button Text="🔄 Refresh"
-                    Command="{Binding RefreshCommand}"
-                    Padding="15,8"/>
-        </HorizontalStackLayout>
+    
+        
 
         <!-- Peers List -->
-        <Border Grid.Row="2"
+        <Border Grid.Row="1"
                 BackgroundColor="{DynamicResource CardBackgroundColor}"
                 Stroke="{DynamicResource BorderColor}"
-                StrokeThickness="1">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="12"/>
-            </Border.StrokeShape>
+                StrokeThickness="1"
+                StrokeShape="RoundRectangle 12">
+            <Grid RowDefinitions="auto,*">
+                <!-- Refresh Button -->
+                <Grid ColumnDefinitions="*,auto">
+                    <Label  Text="Users Nearby" 
+                            FontSize="20"
+                            FontAttributes="Bold"
+                            VerticalTextAlignment="Center"
+                            TextColor="{DynamicResource PrimaryTextColor}"/>
+                    <Button Grid.Column="1"  Text="🔄 Refresh"
+                            Command="{Binding RefreshCommand}"
+                            Padding="15,8"/>
+                </Grid>
 
-            <CollectionView ItemsSource="{Binding DiscoveredPeers}"
-                           EmptyView="No peers discovered yet. Waiting...">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
-                        <Border Margin="10"
-                                Padding="15"
-                                BackgroundColor="{DynamicResource PageBackgroundColor}"
-                                Stroke="{DynamicResource BorderColor}"
-                                StrokeThickness="1">
-                            <Border.StrokeShape>
-                                <RoundRectangle CornerRadius="8"/>
-                            </Border.StrokeShape>
+                <CollectionView Grid.Row="1" 
+                                ItemsSource="{Binding DiscoveredPeers}"
+                                EmptyView="No peers discovered yet. Waiting...">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="10"
+                                    Padding="15"                                    
+                                    BackgroundColor="{DynamicResource PageBackgroundColor}"
+                                    Stroke="{DynamicResource BorderColor}"
+                                    StrokeThickness="1" 
+                                    StrokeShape="RoundRectangle 8">
 
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                                <VerticalStackLayout Spacing="5">
-                                    <Label Text="{Binding Name}"
-                                           FontSize="16"
-                                           FontAttributes="Bold"
-                                           TextColor="{DynamicResource PrimaryTextColor}"/>
 
-                                    <Label Text="{Binding IpAddress}"
-                                           FontSize="14"
-                                           TextColor="{DynamicResource SecondaryTextColor}"/>
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <VerticalStackLayout Spacing="5">
+                                            <Label Text="{Binding Name}"
+                                                   FontSize="16"
+                                                   FontAttributes="Bold"
+                                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+                                            <Label Text="{Binding IpAddress}"   
+                                                   FontSize="14"                                                                           
+                                                   TextColor="{DynamicResource SecondaryTextColor}"/>        
+                                            <HorizontalStackLayout Spacing="10">
+                                                <Label Text="{Binding IsOnline, StringFormat='Status: {0}'}"         
+                                                       FontSize="12"
+                                                       TextColor="{DynamicResource TertiaryTextColor}">
+                                                    <Label.Triggers>
+                                                        <DataTrigger TargetType="Label" 
+                                                                     Binding="{Binding IsOnline}" 
+                                                                     Value="True">
+                                                            <Setter Property="Text" Value="🟢 Online"/>
+                                                            <Setter Property="TextColor" Value="{DynamicResource SuccessColor}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger TargetType="Label" 
+                                                                     Binding="{Binding IsOnline}" 
+                                                                     Value="False">
+                                                            <Setter Property="Text" Value="🔴 Offline"/>
+                                                            <Setter Property="TextColor" Value="{DynamicResource DangerColor}"/>
+                                                        </DataTrigger>
+                                                    </Label.Triggers>
+                                                </Label>
 
-                                    <HorizontalStackLayout Spacing="10">
-                                        <Label Text="{Binding IsOnline, StringFormat='Status: {0}'}"
-                                               FontSize="12"
-                                               TextColor="{DynamicResource TertiaryTextColor}">
-                                            <Label.Triggers>
-                                                <DataTrigger TargetType="Label" 
-                                                           Binding="{Binding IsOnline}" 
-                                                           Value="True">
-                                                    <Setter Property="Text" Value="🟢 Online"/>
-                                                    <Setter Property="TextColor" Value="{DynamicResource SuccessColor}"/>
-                                                </DataTrigger>
-                                                <DataTrigger TargetType="Label" 
-                                                           Binding="{Binding IsOnline}" 
-                                                           Value="False">
-                                                    <Setter Property="Text" Value="🔴 Offline"/>
-                                                    <Setter Property="TextColor" Value="{DynamicResource DangerColor}"/>
-                                                </DataTrigger>
-                                            </Label.Triggers>
-                                        </Label>
+                                                <Label Text="{Binding IsConnected, StringFormat='Connected: {0}'}"
+                                                       FontSize="12"
+                                                       TextColor="{DynamicResource TertiaryTextColor}">
+                                                    <Label.Triggers>
+                                                        <DataTrigger TargetType="Label" 
+                                                                     Binding="{Binding IsConnected}" 
+                                                                     Value="True">
+                                                            <Setter Property="Text" Value="✅ Connected"/>
+                                                            <Setter Property="TextColor" Value="{DynamicResource SuccessColor}"/>
+                                                        </DataTrigger>
+                                                    </Label.Triggers>
+                                                </Label>
+                                            </HorizontalStackLayout>
+                                        </VerticalStackLayout>
 
-                                        <Label Text="{Binding IsConnected, StringFormat='Connected: {0}'}"
-                                               FontSize="12"
-                                               TextColor="{DynamicResource TertiaryTextColor}">
-                                            <Label.Triggers>
-                                                <DataTrigger TargetType="Label" 
-                                                           Binding="{Binding IsConnected}" 
-                                                           Value="True">
-                                                    <Setter Property="Text" Value="✅ Connected"/>
-                                                    <Setter Property="TextColor" Value="{DynamicResource SuccessColor}"/>
-                                                </DataTrigger>
-                                            </Label.Triggers>
-                                        </Label>
-                                    </HorizontalStackLayout>
-                                </VerticalStackLayout>
+                                        <VerticalStackLayout Grid.Column="1" 
+                                                             Spacing="5">
+                                            <Button Text="Connect"
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DiscoverPageModel}}, Path=ConnectCommand}"
+                                                    CommandParameter="{Binding .}"
+                                                    IsEnabled="{Binding IsOnline}"
+                                                    IsVisible="{Binding IsConnected, Converter={StaticResource InvertedBoolConverter}}"
+                                                    Padding="12,6"
+                                                    FontSize="12"/>
+                                            
+                                            <Button Text="Disconnect"
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DiscoverPageModel}}, Path=DisconnectCommand}"
+                                                    CommandParameter="{Binding .}"
+                                                    IsVisible="{Binding IsConnected}"
+                                                    BackgroundColor="{DynamicResource DangerColor}"
+                                                    Padding="12,6"
+                                                    FontSize="12"/>
 
-                                <VerticalStackLayout Grid.Column="1" 
-                                                   Spacing="5">
-                                    <Button Text="Connect"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DiscoverPageModel}}, Path=ConnectCommand}"
-                                            CommandParameter="{Binding .}"
-                                            IsEnabled="{Binding IsOnline}"
-                                            IsVisible="{Binding IsConnected, Converter={StaticResource InvertedBoolConverter}}"
-                                            Padding="12,6"
-                                            FontSize="12"/>
-
-                                    <Button Text="Disconnect"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type vm:DiscoverPageModel}}, Path=DisconnectCommand}"
-                                            CommandParameter="{Binding .}"
-                                            IsVisible="{Binding IsConnected}"
-                                            BackgroundColor="{DynamicResource DangerColor}"
-                                            Padding="12,6"
-                                            FontSize="12"/>
-
-                                    <Button Text="Chat"
-                                            Clicked="OnChatClicked"
-                                            IsEnabled="{Binding IsConnected}"
-                                            Padding="12,6"
-                                            FontSize="12"/>
-                                </VerticalStackLayout>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
-        </Border>
+                                            <Button Text="Chat"
+                                                    Clicked="OnChatClicked"
+                                                    IsEnabled="{Binding IsConnected}"
+                                                    Padding="12,6"
+                                                    FontSize="12"/>
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>                
+                </Grid>
+            </Border>          
     </Grid>
 </ContentPage>

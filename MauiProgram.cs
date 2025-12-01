@@ -1,7 +1,7 @@
 ﻿using CommunityToolkit.Maui;
 using Microsoft.Extensions.Logging;
 using Syncfusion.Maui.Toolkit.Hosting;
-using Proximity.PageModels;
+using Proximity.PageModels; 
 using Proximity.Pages;
 using Proximity.Pages.MainMenu;
 using Proximity.Pages.System;
@@ -56,6 +56,7 @@ namespace Proximity
 
             // Main Menu Pages
             builder.Services.AddTransient<DashboardPage>();
+            builder.Services.AddTransient<DashboardPageModel>();
             builder.Services.AddTransient<DiscoverPage>();
             builder.Services.AddTransient<DiscoverPageModel>();
 
@@ -68,6 +69,7 @@ namespace Proximity
             // System Pages            
             builder.Services.AddTransient<UsersPage>();
             builder.Services.AddTransient<SettingsPage>();
+            builder.Services.AddTransient<SettingsPageModel>();
 
             return builder.Build();
         }

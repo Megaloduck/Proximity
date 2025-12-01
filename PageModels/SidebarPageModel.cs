@@ -68,9 +68,24 @@ namespace Proximity.PageModels
         private void BuildNavigationCommands()
         {
             // Main Menu
-            NavigateToDashboardCommand = new Command(() => NavigateAction?.Invoke(new DashboardPage()));
+            NavigateToDashboardCommand = new Command(() =>
+            {
+                var app = Application.Current as App;
+                var services = app?.Handler?.MauiContext?.Services;
 
-            // FIXED: Get DI services for DiscoverPage
+                if (services != null)
+                {
+                    var discoveryService = services.GetService(typeof(DiscoveryService)) as DiscoveryService;
+                    var chatService = services.GetService(typeof(ChatService)) as ChatService;
+                    var voiceService = services.GetService(typeof(VoiceService)) as VoiceService;
+
+                    if (discoveryService != null && chatService != null && voiceService != null)
+                    {
+                        NavigateAction?.Invoke(new DashboardPage(discoveryService, chatService, voiceService));
+                    }
+                }
+            });
+
             NavigateToDiscoverCommand = new Command(() =>
             {
                 var app = Application.Current as App;
@@ -88,7 +103,7 @@ namespace Proximity.PageModels
                 }
             });
 
-            // Tools - ContactsPage needs ChatService from DI when opened from menu
+            // Tools
             NavigateToContactsCommand = new Command(() =>
             {
                 var app = Application.Current as App;
@@ -109,7 +124,23 @@ namespace Proximity.PageModels
 
             // System
             NavigateToUsersCommand = new Command(() => NavigateAction?.Invoke(new UsersPage()));
-            NavigateToSettingsCommand = new Command(() => NavigateAction?.Invoke(new SettingsPage()));
+
+            NavigateToSettingsCommand = new Command(() =>
+            {
+                var app = Application.Current as App;
+                var services = app?.Handler?.MauiContext?.Services;
+
+                if (services != null)
+                {
+                    var discoveryService = services.GetService(typeof(DiscoveryService)) as DiscoveryService;
+                    var voiceService = services.GetService(typeof(VoiceService)) as VoiceService;
+
+                    if (discoveryService != null)
+                    {
+                        NavigateAction?.Invoke(new SettingsPage(discoveryService, voiceService));
+                    }
+                }
+            });
         }
     }
 }

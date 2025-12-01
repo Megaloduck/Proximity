@@ -43,8 +43,8 @@
                                        FontSize="16" 
                                        FontAttributes="Bold" 
                                        TextColor="{DynamicResource PrimaryTextColor}"/>
-                                <Label Text="Personal Template" 
-                                       FontSize="11" 
+                                <Label Text="Offline LAN Communication App" 
+                                       FontSize="10" 
                                        TextColor="{DynamicResource SecondaryTextColor}"/>
                             </VerticalStackLayout>
                         </HorizontalStackLayout>

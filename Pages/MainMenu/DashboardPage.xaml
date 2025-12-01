@@ -2,11 +2,220 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Proximity.Pages.MainMenu.DashboardPage"
-             Title="DashboardPage">
-    <VerticalStackLayout>
-        <Label 
-            Text="Welcome to .NET MAUI!"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center" />
-    </VerticalStackLayout>
+             Title="Dashboard">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+
+            <!-- Welcome Section -->
+            <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1"
+                    Padding="20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12"/>
+                </Border.StrokeShape>
+
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Welcome to Proximity"
+                           FontSize="24"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>                
+
+                    <Label Text="{Binding WelcomeMessage}"
+                           FontSize="16"
+                           TextColor="{DynamicResource SecondaryTextColor}"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Statistics Grid -->
+            <Grid ColumnDefinitions="*,*" 
+                  RowDefinitions="Auto,Auto"
+                  ColumnSpacing="15"
+                  RowSpacing="15">
+
+                <!-- Connected Peers -->
+                <Border Grid.Row="0" Grid.Column="0"
+                        BackgroundColor="{DynamicResource CardBackgroundColor}"
+                        Stroke="{DynamicResource PrimaryColor}"
+                        StrokeThickness="2"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12"/>
+                    </Border.StrokeShape>
+
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="👥"
+                               FontSize="32"
+                               HorizontalOptions="Center"/>
+                        <Label Text="{Binding ConnectedPeersCount}"
+                               FontSize="28"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"
+                               TextColor="{DynamicResource PrimaryColor}"/>
+                        <Label Text="Connected Peers"
+                               FontSize="14"
+                               HorizontalOptions="Center"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Discovered Peers -->
+                <Border Grid.Row="0" Grid.Column="1"
+                        BackgroundColor="{DynamicResource CardBackgroundColor}"
+                        Stroke="{DynamicResource SecondaryColor}"
+                        StrokeThickness="2"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12"/>
+                    </Border.StrokeShape>
+
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="🔍"
+                               FontSize="32"
+                               HorizontalOptions="Center"/>
+                        <Label Text="{Binding DiscoveredPeersCount}"
+                               FontSize="28"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"
+                               TextColor="{DynamicResource SecondaryColor}"/>
+                        <Label Text="Discovered"
+                               FontSize="14"
+                               HorizontalOptions="Center"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Messages Sent -->
+                <Border Grid.Row="1" Grid.Column="0"
+                        BackgroundColor="{DynamicResource CardBackgroundColor}"
+                        Stroke="{DynamicResource AccentColor}"
+                        StrokeThickness="2"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12"/>
+                    </Border.StrokeShape>
+
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="💬"
+                               FontSize="32"
+                               HorizontalOptions="Center"/>
+                        <Label Text="{Binding MessagesSentCount}"
+                               FontSize="28"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"
+                               TextColor="{DynamicResource AccentColor}"/>
+                        <Label Text="Messages Sent"
+                               FontSize="14"
+                               HorizontalOptions="Center"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Voice Status -->
+                <Border Grid.Row="1" Grid.Column="1"
+                        BackgroundColor="{DynamicResource CardBackgroundColor}"
+                        Stroke="{DynamicResource SuccessColor}"
+                        StrokeThickness="2"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="12"/>
+                    </Border.StrokeShape>
+
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="🎤"
+                               FontSize="32"
+                               HorizontalOptions="Center"/>
+                        <Label Text="{Binding VoiceStatus}"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               HorizontalOptions="Center"
+                               TextColor="{DynamicResource SuccessColor}"/>
+                        <Label Text="Voice Service"
+                               FontSize="14"
+                               HorizontalOptions="Center"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+
+            <!-- Quick Actions -->
+            <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1"
+                    Padding="20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12"/>
+                </Border.StrokeShape>
+
+                <VerticalStackLayout Spacing="15">
+                    <Label Text="Quick Actions"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                    <Button Text="🔍 Discover Peers"
+                            Command="{Binding NavigateToDiscoverCommand}"
+                            HorizontalOptions="Fill"/>
+
+                    <Button Text="💬 Open Chat"
+                            Command="{Binding NavigateToContactsCommand}"
+                            HorizontalOptions="Fill"/>
+
+                    <Button Text="🔄 Refresh Statistics"
+                            Command="{Binding RefreshCommand}"
+                            HorizontalOptions="Fill"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Network Info -->
+            <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1"
+                    Padding="20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12"/>
+                </Border.StrokeShape>
+
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Network Information"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                    <Grid ColumnSpacing="10" RowSpacing="8"
+                          ColumnDefinitions="Auto,Auto"
+                          RowDefinitions="Auto,Auto,Auto">
+
+                        <!-- ROW 0 -->
+                        <Label Grid.Row="0" Grid.Column="0"
+                               Text="Your ID:"
+                               TextColor="{DynamicResource SecondaryTextColor}" />
+                        <Label Grid.Row="0" Grid.Column="1"
+                               Text="{Binding LocalPeerId}"
+                               TextColor="{DynamicResource PrimaryTextColor}" />
+
+                        <!-- ROW 1 -->
+                        <Label Grid.Row="1" Grid.Column="0"
+                               Text="Username:"
+                               TextColor="{DynamicResource SecondaryTextColor}" />
+                        <Label Grid.Row="1" Grid.Column="1"
+                               Text="{Binding Username}"
+                               TextColor="{DynamicResource PrimaryTextColor}" />
+
+                        <!-- ROW 2 -->
+                        <Label Grid.Row="2" Grid.Column="0"
+                               Text="Status:"
+                               TextColor="{DynamicResource SecondaryTextColor}" />
+
+                        <Label Grid.Row="2" Grid.Column="1"
+                               Text="{Binding ConnectionStatus}"
+                               TextColor="{DynamicResource SuccessColor}" />
+                    </Grid>
+
+                </VerticalStackLayout>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>
