@@ -56,8 +56,11 @@ namespace Proximity.PageModels
             {
                 if (SetProperty(ref _isPushToTalk, value))
                 {
-                    _voiceService!.IsPushToTalk = value;
-                    Preferences.Set("IsPushToTalk", value);
+                    if (_voiceService != null)
+                    {
+                        _voiceService.IsPushToTalk = value;
+                        Preferences.Set("IsPushToTalk", value);
+                    }
                 }
             }
         }
@@ -211,6 +214,12 @@ namespace Proximity.PageModels
                 const int SampleRate = 44100;
                 const int FrameSize = 441;
 
+                if (_selectedInputDeviceIndex < 0 || _selectedOutputDeviceIndex < 0)
+                {
+                    LoopbackStatus = "❌ Please select audio devices first";
+                    return;
+                }
+
                 var inputParams = new StreamParameters
                 {
                     device = _selectedInputDeviceIndex,
@@ -227,8 +236,26 @@ namespace Proximity.PageModels
                     suggestedLatency = PortAudio.GetDeviceInfo(_selectedOutputDeviceIndex).defaultLowOutputLatency
                 };
 
-                _loopbackInput = new PaStream(inputParams, null, SampleRate, FrameSize);
-                _loopbackOutput = new PaStream(null, outputParams, SampleRate, FrameSize);
+                // Create streams with all 7 required parameters
+                _loopbackInput = new PaStream(
+                    inParams: inputParams,
+                    outParams: null,
+                    sampleRate: SampleRate,
+                    framesPerBuffer: (uint)FrameSize,
+                    streamFlags: StreamFlags.ClipOff,
+                    callback: null,
+                    userData: null
+                );
+
+                _loopbackOutput = new PaStream(
+                    inParams: null,
+                    outParams: outputParams,
+                    sampleRate: SampleRate,
+                    framesPerBuffer: (uint)FrameSize,
+                    streamFlags: StreamFlags.ClipOff,
+                    callback: null,
+                    userData: null
+                );
 
                 _loopbackInput.Start();
                 _loopbackOutput.Start();
@@ -255,8 +282,18 @@ namespace Proximity.PageModels
             {
                 try
                 {
-                    _loopbackInput!.Read(buffer, frameSize);
-                    _loopbackOutput!.Write(buffer, frameSize);
+                    if (_loopbackInput != null && _loopbackOutput != null)
+                    {
+                        // Use ReadStream and WriteStream with unsafe code
+                        unsafe
+                        {
+                            fixed (short* ptr = buffer)
+                            {
+                                _loopbackInput.ReadStream((IntPtr)ptr, (uint)frameSize);
+                                _loopbackOutput.WriteStream((IntPtr)ptr, (uint)frameSize);
+                            }
+                        }
+                    }
                 }
                 catch
                 {
@@ -281,7 +318,7 @@ namespace Proximity.PageModels
 
                 _isLoopbackActive = false;
                 LoopbackButtonText = "Start Test";
-                LoopbackStatus = "Loopback test stopped";
+                LoopbackStatus = "✅ Test stopped";
             }
             catch (Exception ex)
             {
@@ -289,6 +326,4 @@ namespace Proximity.PageModels
             }
         }
     }
-
-    
 }

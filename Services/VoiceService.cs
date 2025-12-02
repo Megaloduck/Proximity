@@ -64,7 +64,6 @@ namespace Proximity.Services
                 // Initialize PortAudio if needed
                 try
                 {
-                    // Try to get device count - if it throws, PortAudio isn't initialized
                     var deviceCount = PortAudio.DeviceCount;
                 }
                 catch
@@ -144,23 +143,23 @@ namespace Proximity.Services
                     suggestedLatency = outputInfo.defaultLowOutputLatency
                 };
 
-                // Open input stream (microphone)
+                // Open input stream (microphone) - 7 parameters required
                 _inputStream = new PaStream(
                     inParams: inputParams,
                     outParams: null,
                     sampleRate: SampleRate,
-                    framesPerBuffer: FrameSize,
+                    framesPerBuffer: (uint)FrameSize,
                     streamFlags: StreamFlags.ClipOff,
                     callback: null,
                     userData: null
                 );
 
-                // Open output stream (speaker)
+                // Open output stream (speaker) - 7 parameters required
                 _outputStream = new PaStream(
                     inParams: null,
                     outParams: outputParams,
                     sampleRate: SampleRate,
-                    framesPerBuffer: FrameSize,
+                    framesPerBuffer: (uint)FrameSize,
                     streamFlags: StreamFlags.ClipOff,
                     callback: null,
                     userData: null
@@ -303,7 +302,7 @@ namespace Proximity.Services
                 {
                     if (_isTransmitting && _inputStream != null && _inputStream.IsActive)
                     {
-                        // Read audio from microphone using ReadStream
+                        // Read audio from microphone using ReadStream with unsafe code
                         unsafe
                         {
                             fixed (short* ptr = buffer)
@@ -401,7 +400,7 @@ namespace Proximity.Services
 
                 if (decodedLength > 0 && _outputStream.IsActive)
                 {
-                    // Play audio using WriteStream
+                    // Play audio using WriteStream with unsafe code
                     unsafe
                     {
                         fixed (short* ptr = decoded)
@@ -431,9 +430,6 @@ namespace Proximity.Services
                 _outputStream?.Dispose();
 
                 _udpClient?.Close();
-
-                // Don't terminate PortAudio - it may still be used by other components
-                // Only terminate if you're sure nothing else needs it
 
                 System.Diagnostics.Debug.WriteLine("VoiceService disposed");
             }
