@@ -1,7 +1,4 @@
 ﻿using Plugin.Maui.Audio;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Proximity.Services
 {
@@ -11,7 +8,13 @@ namespace Proximity.Services
         {
             using var stream = new MemoryStream(data);
             var player = AudioManager.Current.CreatePlayer(stream);
-            await player.PlayAsync();
+            player.Play();
+
+            // Wait for playback to complete
+            while (player.IsPlaying)
+            {
+                await Task.Delay(100);
+            }
         }
     }
 }

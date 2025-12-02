@@ -19,8 +19,13 @@ namespace Proximity.Services
             if (_recorder == null)
                 return Array.Empty<byte>();
 
-            var audioFile = await _recorder.StopAsync();
-            return File.ReadAllBytes(audioFile);
+            var audioSource = await _recorder.StopAsync();
+
+            // Get the file path from the audio source
+            var stream = audioSource.GetAudioStream();
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            return memoryStream.ToArray();
         }
 
         public bool IsRecording =>
