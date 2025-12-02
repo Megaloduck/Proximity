@@ -54,7 +54,12 @@ namespace Proximity.Services
         private async Task BroadcastLoop(CancellationToken ct)
         {
             var localIp = GetLocalIPAddress();
-            var payload = $"DISCOVER_CHAT|{_localId}|{localIp}|9002|9003";
+            var displayName = Preferences.Get("ProfileDisplayName", Preferences.Get("UserName", "User"));
+            var status = Preferences.Get("ProfileStatus", "");
+            var emoji = Preferences.Get("ProfileEmoji", "😀");
+
+            // Updated protocol to include profile info
+            var payload = $"DISCOVER_CHAT|{_localId}|{localIp}|9002|9003|{displayName}|{status}|{emoji}";
             var data = Encoding.UTF8.GetBytes(payload);
             var endpoint = new IPEndPoint(IPAddress.Broadcast, DiscoveryPort);
 
@@ -89,6 +94,11 @@ namespace Proximity.Services
                             var chatPort = int.Parse(parts[3]);
                             var voicePort = int.Parse(parts[4]);
 
+                            // Optional profile fields
+                            var displayName = parts.Length > 5 ? parts[5] : $"Peer_{id.Substring(0, 8)}";
+                            var status = parts.Length > 6 ? parts[6] : "";
+                            var emoji = parts.Length > 7 ? parts[7] : "😀";
+
                             if (id == _localId) continue;
 
                             var peer = new DiscoveredPeer
@@ -97,7 +107,10 @@ namespace Proximity.Services
                                 Address = IPAddress.Parse(ipStr),
                                 ChatPort = chatPort,
                                 VoicePort = voicePort,
-                                LastSeen = DateTime.Now
+                                LastSeen = DateTime.Now,
+                                DisplayName = displayName,
+                                StatusMessage = status,
+                                Emoji = emoji
                             };
 
                             if (_peers.TryGetValue(id, out var existing))

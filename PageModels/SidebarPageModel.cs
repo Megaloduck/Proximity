@@ -59,7 +59,7 @@ namespace Proximity.PageModels
         public ICommand NavigateToRoomsCommand { get; private set; }
         public ICommand NavigateToAuditoriumCommand { get; private set; }
 
-        public ICommand NavigateToUsersCommand { get; private set; }
+        public ICommand NavigateToProfileCommand { get; private set; }
         public ICommand NavigateToSettingsCommand { get; private set; }
 
         // -------------------------------
@@ -123,7 +123,18 @@ namespace Proximity.PageModels
             NavigateToAuditoriumCommand = new Command(() => NavigateAction?.Invoke(new AuditoriumPage()));
 
             // System
-            NavigateToUsersCommand = new Command(() => NavigateAction?.Invoke(new UsersPage()));
+            NavigateToProfileCommand = new Command(() =>
+            {
+                var app = Application.Current as App;
+                var services = app?.Handler?.MauiContext?.Services; if (services != null)
+                {
+                    var discoveryService = services.GetService(typeof(DiscoveryService)) as DiscoveryService;
+                    if (discoveryService != null)
+                    {
+                        NavigateAction?.Invoke(new ProfilePage(discoveryService));
+                    }
+                }
+            });
 
             NavigateToSettingsCommand = new Command(() =>
             {

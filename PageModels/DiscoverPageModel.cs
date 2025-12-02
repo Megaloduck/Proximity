@@ -60,7 +60,9 @@ namespace Proximity.PageModels
                     DiscoveredPeers.Add(new PeerInfo
                     {
                         Id = peer.Id,
-                        Name = $"Peer_{peer.Id.Substring(0, 8)}",
+                        Name = string.IsNullOrEmpty(peer.DisplayName)
+                            ? $"Peer_{peer.Id.Substring(0, 8)}"
+                            : $"{peer.Emoji} {peer.DisplayName}",
                         IpAddress = peer.Address.ToString(),
                         IsOnline = true,
                         IsConnected = false

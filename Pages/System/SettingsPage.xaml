@@ -85,6 +85,7 @@
                                FontSize="14"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
                         <Picker ItemsSource="{Binding InputDevices}"
+                                ItemDisplayBinding="{Binding Name}"
                                 SelectedItem="{Binding SelectedInputDevice}"
                                 Title="Select microphone"
                                 FontSize="14"/>
@@ -96,6 +97,7 @@
                                FontSize="14"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
                         <Picker ItemsSource="{Binding OutputDevices}"
+                                ItemDisplayBinding="{Binding Name}"
                                 SelectedItem="{Binding SelectedOutputDevice}"
                                 Title="Select speaker"
                                 FontSize="14"/>

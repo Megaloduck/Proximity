@@ -148,27 +148,19 @@
                             </HorizontalStackLayout>
                         </Border>
 
-                  
-
-                        
-
-                     
-
-                       
-
                         <!-- SYSTEM Section -->
                         <Label Text="SYSTEM" Style="{StaticResource SidebarSectionHeader}" Margin="12,16,12,4"/>
 
                         <Border Style="{StaticResource SidebarItemStyle}">
                             <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding NavigateToUsersCommand}"/>
+                                <TapGestureRecognizer Command="{Binding NavigateToProfileCommand}"/>
                             </Border.GestureRecognizers>
                             <HorizontalStackLayout Spacing="12" Padding="12,12">
                                 <Border Style="{StaticResource SidebarLayout}">
                                     <Label Text="👨‍💼" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center"/>
                                 </Border>
                                 <VerticalStackLayout Spacing="0" VerticalOptions="Center">
-                                    <Label Text="Users" Style="{StaticResource SidebarItemText}"/>
+                                    <Label Text="Profile" Style="{StaticResource SidebarItemText}"/>
                                     <Label Text="User management" FontSize="10" TextColor="{DynamicResource SecondaryTextColor}"/>
                                 </VerticalStackLayout>
                             </HorizontalStackLayout>
