@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using PortAudioSharp;
 using Concentus.Structs;
 using Concentus.Enums;
+using PaStream = PortAudioSharp.Stream;
 
 namespace Proximity.Services
 {
@@ -17,9 +18,8 @@ namespace Proximity.Services
         private readonly int _port;
 
         private UdpClient? _udpClient;
-        private PortAudio? _portAudio;
-        private Stream? _inputStream;
-        private Stream? _outputStream;
+        private PaStream? _inputStream;
+        private PaStream? _outputStream;
 
         private OpusEncoder? _encoder;
         private OpusDecoder? _decoder;
@@ -61,9 +61,16 @@ namespace Proximity.Services
         {
             try
             {
-                // Initialize PortAudio
-                PortAudio.Initialize();
-                _portAudio = PortAudio.Instance;
+                // Initialize PortAudio if needed
+                try
+                {
+                    // Try to get device count - if it throws, PortAudio isn't initialized
+                    var deviceCount = PortAudio.DeviceCount;
+                }
+                catch
+                {
+                    PortAudio.Initialize();
+                }
 
                 // Initialize Opus codec
                 _encoder = new OpusEncoder(SampleRate, Channels, OpusApplication.OPUS_APPLICATION_VOIP);
@@ -75,9 +82,9 @@ namespace Proximity.Services
                 _udpClient = new UdpClient(_port);
                 _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
-                // Get default devices
-                _inputDeviceIndex = PortAudio.DefaultInputDevice;
-                _outputDeviceIndex = PortAudio.DefaultOutputDevice;
+                // Get saved or default devices
+                _inputDeviceIndex = Preferences.Get("InputDeviceIndex", PortAudio.DefaultInputDevice);
+                _outputDeviceIndex = Preferences.Get("OutputDeviceIndex", PortAudio.DefaultOutputDevice);
 
                 // Initialize audio streams
                 InitializeAudioStreams();
@@ -85,9 +92,14 @@ namespace Proximity.Services
                 _isActive = true;
                 _cts = new CancellationTokenSource();
 
+                // Load push-to-talk preference
+                _isPushToTalk = Preferences.Get("IsPushToTalk", true);
+
                 // Start receiving
                 _ = ReceiveLoop(_cts.Token);
                 _ = CaptureLoop(_cts.Token);
+
+                System.Diagnostics.Debug.WriteLine("VoiceService initialized successfully");
             }
             catch (Exception ex)
             {
@@ -99,45 +111,64 @@ namespace Proximity.Services
         {
             try
             {
+                // Validate device indices
+                if (_inputDeviceIndex < 0 || _inputDeviceIndex >= PortAudio.DeviceCount)
+                {
+                    _inputDeviceIndex = PortAudio.DefaultInputDevice;
+                    System.Diagnostics.Debug.WriteLine($"Invalid input device, using default: {_inputDeviceIndex}");
+                }
+
+                if (_outputDeviceIndex < 0 || _outputDeviceIndex >= PortAudio.DeviceCount)
+                {
+                    _outputDeviceIndex = PortAudio.DefaultOutputDevice;
+                    System.Diagnostics.Debug.WriteLine($"Invalid output device, using default: {_outputDeviceIndex}");
+                }
+
                 // Input stream parameters
+                var inputInfo = PortAudio.GetDeviceInfo(_inputDeviceIndex);
                 var inputParams = new StreamParameters
                 {
                     device = _inputDeviceIndex,
                     channelCount = Channels,
                     sampleFormat = SampleFormat.Int16,
-                    suggestedLatency = PortAudio.GetDeviceInfo(_inputDeviceIndex).defaultLowInputLatency
+                    suggestedLatency = inputInfo.defaultLowInputLatency
                 };
 
                 // Output stream parameters
+                var outputInfo = PortAudio.GetDeviceInfo(_outputDeviceIndex);
                 var outputParams = new StreamParameters
                 {
                     device = _outputDeviceIndex,
                     channelCount = Channels,
                     sampleFormat = SampleFormat.Int16,
-                    suggestedLatency = PortAudio.GetDeviceInfo(_outputDeviceIndex).defaultLowOutputLatency
+                    suggestedLatency = outputInfo.defaultLowOutputLatency
                 };
 
                 // Open input stream (microphone)
-                _inputStream = new Stream(
+                _inputStream = new PaStream(
                     inParams: inputParams,
                     outParams: null,
                     sampleRate: SampleRate,
                     framesPerBuffer: FrameSize,
                     streamFlags: StreamFlags.ClipOff,
-                    callback: null
+                    callback: null,
+                    userData: null
                 );
 
                 // Open output stream (speaker)
-                _outputStream = new Stream(
+                _outputStream = new PaStream(
                     inParams: null,
                     outParams: outputParams,
                     sampleRate: SampleRate,
                     framesPerBuffer: FrameSize,
                     streamFlags: StreamFlags.ClipOff,
-                    callback: null
+                    callback: null,
+                    userData: null
                 );
 
                 _outputStream.Start();
+
+                System.Diagnostics.Debug.WriteLine($"Audio streams initialized - Input: {inputInfo.name}, Output: {outputInfo.name}");
             }
             catch (Exception ex)
             {
@@ -147,26 +178,62 @@ namespace Proximity.Services
 
         public void SetInputDevice(int deviceIndex)
         {
+            if (deviceIndex < 0 || deviceIndex >= PortAudio.DeviceCount)
+            {
+                System.Diagnostics.Debug.WriteLine($"Invalid input device index: {deviceIndex}");
+                return;
+            }
+
             _inputDeviceIndex = deviceIndex;
+            Preferences.Set("InputDeviceIndex", deviceIndex);
             ReinitializeAudioStreams();
+
+            var info = PortAudio.GetDeviceInfo(deviceIndex);
+            System.Diagnostics.Debug.WriteLine($"Input device changed to: {info.name}");
         }
 
         public void SetOutputDevice(int deviceIndex)
         {
+            if (deviceIndex < 0 || deviceIndex >= PortAudio.DeviceCount)
+            {
+                System.Diagnostics.Debug.WriteLine($"Invalid output device index: {deviceIndex}");
+                return;
+            }
+
             _outputDeviceIndex = deviceIndex;
+            Preferences.Set("OutputDeviceIndex", deviceIndex);
             ReinitializeAudioStreams();
+
+            var info = PortAudio.GetDeviceInfo(deviceIndex);
+            System.Diagnostics.Debug.WriteLine($"Output device changed to: {info.name}");
         }
 
         private void ReinitializeAudioStreams()
         {
             try
             {
+                // Stop current transmission if active
+                var wasTransmitting = _isTransmitting;
+                if (wasTransmitting)
+                {
+                    _isTransmitting = false;
+                }
+
+                // Close existing streams
                 _inputStream?.Stop();
                 _inputStream?.Dispose();
                 _outputStream?.Stop();
                 _outputStream?.Dispose();
 
+                // Reinitialize with new devices
                 InitializeAudioStreams();
+
+                // Restore transmission state
+                if (wasTransmitting && !_isPushToTalk)
+                {
+                    _isTransmitting = true;
+                    _inputStream?.Start();
+                }
             }
             catch (Exception ex)
             {
@@ -179,7 +246,11 @@ namespace Proximity.Services
             if (_inputStream != null && !_isPushToTalk)
             {
                 _isTransmitting = true;
-                _inputStream.Start();
+                if (!_inputStream.IsActive)
+                {
+                    _inputStream.Start();
+                }
+                System.Diagnostics.Debug.WriteLine("Voice capture started (continuous mode)");
             }
         }
 
@@ -188,7 +259,11 @@ namespace Proximity.Services
             if (_inputStream != null && !_isPushToTalk)
             {
                 _isTransmitting = false;
-                _inputStream.Stop();
+                if (_inputStream.IsActive)
+                {
+                    _inputStream.Stop();
+                }
+                System.Diagnostics.Debug.WriteLine("Voice capture stopped");
             }
         }
 
@@ -197,7 +272,11 @@ namespace Proximity.Services
             if (_inputStream != null && _isPushToTalk)
             {
                 _isTransmitting = true;
-                _inputStream.Start();
+                if (!_inputStream.IsActive)
+                {
+                    _inputStream.Start();
+                }
+                System.Diagnostics.Debug.WriteLine("Push-to-talk activated");
             }
         }
 
@@ -206,7 +285,11 @@ namespace Proximity.Services
             if (_inputStream != null && _isPushToTalk)
             {
                 _isTransmitting = false;
-                _inputStream.Stop();
+                if (_inputStream.IsActive)
+                {
+                    _inputStream.Stop();
+                }
+                System.Diagnostics.Debug.WriteLine("Push-to-talk deactivated");
             }
         }
 
@@ -220,8 +303,14 @@ namespace Proximity.Services
                 {
                     if (_isTransmitting && _inputStream != null && _inputStream.IsActive)
                     {
-                        // Read audio from microphone
-                        _inputStream.Read(buffer, FrameSize);
+                        // Read audio from microphone using ReadStream
+                        unsafe
+                        {
+                            fixed (short* ptr = buffer)
+                            {
+                                _inputStream.ReadStream((IntPtr)ptr, (uint)FrameSize);
+                            }
+                        }
 
                         // Encode with Opus
                         if (_encoder != null)
@@ -262,7 +351,10 @@ namespace Proximity.Services
                 var endpoint = new IPEndPoint(IPAddress.Broadcast, _port);
                 await _udpClient.SendAsync(packet, packet.Length, endpoint);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Send voice packet error: {ex.Message}");
+            }
         }
 
         public async Task SendVoiceToEndpoint(byte[] packet, IPEndPoint endpoint)
@@ -273,7 +365,10 @@ namespace Proximity.Services
             {
                 await _udpClient.SendAsync(packet, packet.Length, endpoint);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Send to endpoint error: {ex.Message}");
+            }
         }
 
         private async Task ReceiveLoop(CancellationToken ct)
@@ -286,7 +381,11 @@ namespace Proximity.Services
                     ProcessVoicePacket(result.Buffer);
                 }
                 catch when (ct.IsCancellationRequested) { }
-                catch { }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Receive error: {ex.Message}");
+                    await Task.Delay(100, ct);
+                }
             }
         }
 
@@ -302,8 +401,14 @@ namespace Proximity.Services
 
                 if (decodedLength > 0 && _outputStream.IsActive)
                 {
-                    // Play audio
-                    _outputStream.Write(decoded, decodedLength);
+                    // Play audio using WriteStream
+                    unsafe
+                    {
+                        fixed (short* ptr = decoded)
+                        {
+                            _outputStream.WriteStream((IntPtr)ptr, (uint)decodedLength);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -317,15 +422,25 @@ namespace Proximity.Services
             _isActive = false;
             _cts?.Cancel();
 
-            _inputStream?.Stop();
-            _inputStream?.Dispose();
+            try
+            {
+                _inputStream?.Stop();
+                _inputStream?.Dispose();
 
-            _outputStream?.Stop();
-            _outputStream?.Dispose();
+                _outputStream?.Stop();
+                _outputStream?.Dispose();
 
-            _udpClient?.Close();
+                _udpClient?.Close();
 
-            PortAudio.Terminate();
+                // Don't terminate PortAudio - it may still be used by other components
+                // Only terminate if you're sure nothing else needs it
+
+                System.Diagnostics.Debug.WriteLine("VoiceService disposed");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Dispose error: {ex.Message}");
+            }
         }
     }
 }

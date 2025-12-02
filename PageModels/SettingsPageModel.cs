@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows.Input;
 using PortAudioSharp;
 using Proximity.Services;
+using PaStream = PortAudioSharp.Stream;
 
 namespace Proximity.PageModels
 {
@@ -13,8 +14,8 @@ namespace Proximity.PageModels
         private readonly VoiceService? _voiceService;
         private readonly ThemeService _themeService;
 
-        private Stream? _loopbackInput;
-        private Stream? _loopbackOutput;
+        private PaStream? _loopbackInput;
+        private PaStream? _loopbackOutput;
         private bool _isLoopbackActive;
         private System.Threading.CancellationTokenSource? _loopbackCts;
 
@@ -56,6 +57,7 @@ namespace Proximity.PageModels
                 if (SetProperty(ref _isPushToTalk, value) && _voiceService != null)
                 {
                     _voiceService.IsPushToTalk = value;
+                    Preferences.Set("IsPushToTalk", value);
                 }
             }
         }
@@ -66,7 +68,7 @@ namespace Proximity.PageModels
             set => SetProperty(ref _localPeerId, value);
         }
 
-        public AudioDeviceInfo SelectedInputDevice
+        public AudioDeviceInfo? SelectedInputDevice
         {
             get => InputDevices.FirstOrDefault(d => d.Index == _selectedInputDeviceIndex);
             set
@@ -81,7 +83,7 @@ namespace Proximity.PageModels
             }
         }
 
-        public AudioDeviceInfo SelectedOutputDevice
+        public AudioDeviceInfo? SelectedOutputDevice
         {
             get => OutputDevices.FirstOrDefault(d => d.Index == _selectedOutputDeviceIndex);
             set
@@ -128,7 +130,16 @@ namespace Proximity.PageModels
         {
             try
             {
-                PortAudio.Initialize();
+                // Initialize PortAudio if needed
+                try
+                {
+                    // Try to get device count - if it throws, PortAudio isn't initialized
+                    var deviceCount = PortAudio.DeviceCount;
+                }
+                catch
+                {
+                    PortAudio.Initialize();
+                }
 
                 // Load input devices
                 InputDevices.Clear();
@@ -172,6 +183,16 @@ namespace Proximity.PageModels
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading audio devices: {ex.Message}");
+
+                // Add fallback devices if PortAudio fails
+                if (InputDevices.Count == 0)
+                {
+                    InputDevices.Add(new AudioDeviceInfo { Index = 0, Name = "Default Input", IsDefault = true });
+                }
+                if (OutputDevices.Count == 0)
+                {
+                    OutputDevices.Add(new AudioDeviceInfo { Index = 0, Name = "Default Output", IsDefault = true });
+                }
             }
         }
 
@@ -179,13 +200,36 @@ namespace Proximity.PageModels
         {
             Username = Preferences.Get("UserName", "User");
             IsDarkMode = _themeService.IsDarkMode;
-            IsPushToTalk = _voiceService?.IsPushToTalk ?? true;
+            IsPushToTalk = Preferences.Get("IsPushToTalk", true);
+
+            // Update VoiceService if available
+            if (_voiceService != null)
+            {
+                _voiceService.IsPushToTalk = IsPushToTalk;
+            }
+
             LocalPeerId = _discoveryService.GetLocalId();
         }
 
         private async void SaveUsername()
         {
+            if (string.IsNullOrWhiteSpace(Username))
+            {
+                await Application.Current!.MainPage!.DisplayAlert(
+                    "Error",
+                    "Username cannot be empty",
+                    "OK"
+                );
+                return;
+            }
+
             Preferences.Set("UserName", Username);
+
+            // Also update display name for backward compatibility
+            if (string.IsNullOrEmpty(Preferences.Get("ProfileDisplayName", "")))
+            {
+                Preferences.Set("ProfileDisplayName", Username);
+            }
 
             await Application.Current!.MainPage!.DisplayAlert(
                 "Success",
@@ -213,6 +257,12 @@ namespace Proximity.PageModels
                 const int SampleRate = 44100;
                 const int FrameSize = 441; // 10ms at 44.1kHz
 
+                if (_selectedInputDeviceIndex < 0 || _selectedOutputDeviceIndex < 0)
+                {
+                    LoopbackStatus = "❌ Please select audio devices first";
+                    return;
+                }
+
                 // Input parameters
                 var inputParams = new StreamParameters
                 {
@@ -232,22 +282,24 @@ namespace Proximity.PageModels
                 };
 
                 // Open streams
-                _loopbackInput = new Stream(
+                _loopbackInput = new PaStream(
                     inParams: inputParams,
                     outParams: null,
                     sampleRate: SampleRate,
                     framesPerBuffer: FrameSize,
                     streamFlags: StreamFlags.ClipOff,
-                    callback: null
+                    callback: null,
+                    userData: null
                 );
 
-                _loopbackOutput = new Stream(
+                _loopbackOutput = new PaStream(
                     inParams: null,
                     outParams: outputParams,
                     sampleRate: SampleRate,
                     framesPerBuffer: FrameSize,
                     streamFlags: StreamFlags.ClipOff,
-                    callback: null
+                    callback: null,
+                    userData: null
                 );
 
                 _loopbackInput.Start();

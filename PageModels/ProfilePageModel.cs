@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System;
 using System.Windows.Input;
 using Proximity.Services;
 
@@ -63,18 +60,18 @@ namespace Proximity.PageModels
         private void LoadProfile()
         {
             DisplayName = Preferences.Get("ProfileDisplayName", Preferences.Get("UserName", "User"));
-            StatusMessage = Preferences.Get("ProfileStatus", "Available to chat");
+            StatusMessage = Preferences.Get("ProfileStatus", "");
             SelectedEmoji = Preferences.Get("ProfileEmoji", "😀");
             LocalPeerId = _discoveryService.GetLocalId();
 
-            // Get or set account creation date
-            var createdDate = Preferences.Get("AccountCreatedDate", "");
+            // Get account creation date (or set it now if first time)
+            var createdDate = Preferences.Get("AccountCreatedDate", string.Empty);
             if (string.IsNullOrEmpty(createdDate))
             {
-                createdDate = DateTime.Now.ToString("yyyy-MM-dd");
+                createdDate = DateTime.Now.ToString("MMMM dd, yyyy");
                 Preferences.Set("AccountCreatedDate", createdDate);
             }
-            AccountCreated = DateTime.Parse(createdDate).ToString("MMMM dd, yyyy");
+            AccountCreated = createdDate;
         }
 
         private void SelectEmoji(string emoji)
@@ -84,23 +81,28 @@ namespace Proximity.PageModels
 
         private async void SaveProfile()
         {
+            // Validate display name
             if (string.IsNullOrWhiteSpace(DisplayName))
             {
                 await Application.Current!.MainPage!.DisplayAlert(
-                    "Invalid Name",
-                    "Please enter a display name",
+                    "Error",
+                    "Display name cannot be empty",
                     "OK"
                 );
                 return;
             }
 
+            // Save to preferences
             Preferences.Set("ProfileDisplayName", DisplayName);
             Preferences.Set("ProfileStatus", StatusMessage);
             Preferences.Set("ProfileEmoji", SelectedEmoji);
 
+            // Also update the legacy UserName for backward compatibility
+            Preferences.Set("UserName", DisplayName);
+
             await Application.Current!.MainPage!.DisplayAlert(
                 "Success",
-                "Profile saved! Other users will see your updated card when they discover you.",
+                "Profile saved! Your updated information will be visible to other users.",
                 "OK"
             );
         }
