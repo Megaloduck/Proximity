@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows.Input;
 using PortAudioSharp;
 using Proximity.Services;
+using Proximity.Models;
 using PaStream = PortAudioSharp.Stream;
 
 namespace Proximity.PageModels
@@ -289,12 +290,5 @@ namespace Proximity.PageModels
         }
     }
 
-    public class AudioDeviceInfo
-    {
-        public int Index { get; set; }
-        public string Name { get; set; } = "";
-        public bool IsDefault { get; set; }
-
-        public override string ToString() => IsDefault ? $"{Name} (Default)" : Name;
-    }
+    
 }
