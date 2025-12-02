@@ -302,14 +302,8 @@ namespace Proximity.Services
                 {
                     if (_isTransmitting && _inputStream != null && _inputStream.IsActive)
                     {
-                        // Read audio from microphone using ReadStream with unsafe code
-                        unsafe
-                        {
-                            fixed (short* ptr = buffer)
-                            {
-                                _inputStream.ReadStream((IntPtr)ptr, (uint)FrameSize);
-                            }
-                        }
+                        // Read audio from microphone
+                        _inputStream.Read(buffer, 0, FrameSize);
 
                         // Encode with Opus
                         if (_encoder != null)
@@ -400,14 +394,8 @@ namespace Proximity.Services
 
                 if (decodedLength > 0 && _outputStream.IsActive)
                 {
-                    // Play audio using WriteStream with unsafe code
-                    unsafe
-                    {
-                        fixed (short* ptr = decoded)
-                        {
-                            _outputStream.WriteStream((IntPtr)ptr, (uint)decodedLength);
-                        }
-                    }
+                    // Play audio using Write (not WriteStream)
+                    _outputStream.Write(decoded, 0, decodedLength);
                 }
             }
             catch (Exception ex)

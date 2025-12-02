@@ -5,7 +5,6 @@ using System.Windows.Input;
 using PortAudioSharp;
 using Proximity.Services;
 using Proximity.Models;
-using PaStream = PortAudioSharp.Stream;
 
 namespace Proximity.PageModels
 {
@@ -15,8 +14,8 @@ namespace Proximity.PageModels
         private readonly VoiceService? _voiceService;
         private readonly ThemeService _themeService;
 
-        private PaStream? _loopbackInput;
-        private PaStream? _loopbackOutput;
+        private PortAudioSharp.Stream? _loopbackInput;
+        private PortAudioSharp.Stream? _loopbackOutput;
         private bool _isLoopbackActive;
         private System.Threading.CancellationTokenSource? _loopbackCts;
 
@@ -237,7 +236,7 @@ namespace Proximity.PageModels
                 };
 
                 // Create streams with all 7 required parameters
-                _loopbackInput = new PaStream(
+                _loopbackInput = new PortAudioSharp.Stream(
                     inParams: inputParams,
                     outParams: null,
                     sampleRate: SampleRate,
@@ -247,7 +246,7 @@ namespace Proximity.PageModels
                     userData: null
                 );
 
-                _loopbackOutput = new PaStream(
+                _loopbackOutput = new PortAudioSharp.Stream(
                     inParams: null,
                     outParams: outputParams,
                     sampleRate: SampleRate,
@@ -284,14 +283,12 @@ namespace Proximity.PageModels
                 {
                     if (_loopbackInput != null && _loopbackOutput != null)
                     {
-                        // Use ReadStream and WriteStream with unsafe code
-                        unsafe
+                        // Read from input stream
+                        int readResult = PortAudio.ReadStream(_loopbackInput, buffer, frameSize);
+                        if (readResult == 0)
                         {
-                            fixed (short* ptr = buffer)
-                            {
-                                _loopbackInput.ReadStream((IntPtr)ptr, (uint)frameSize);
-                                _loopbackOutput.WriteStream((IntPtr)ptr, (uint)frameSize);
-                            }
+                            // Write to output stream
+                            PortAudio.WriteStream(_loopbackOutput, buffer, frameSize);
                         }
                     }
                 }
