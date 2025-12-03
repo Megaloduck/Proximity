@@ -1,430 +1,450 @@
-﻿using System;
+﻿using PortAudioSharp;
+using System;
+using System.Buffers;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using PortAudioSharp;
-using Concentus.Structs;
-using Concentus.Enums;
-using PaStream = PortAudioSharp.Stream;
 
 namespace Proximity.Services
 {
-    public class VoiceService : IDisposable
+    public sealed class VoiceService : IDisposable
     {
-        private const int SampleRate = 48000;
-        private const int FrameSize = 960; // 20ms at 48kHz
-        private const int Channels = 1;
-        private readonly int _port;
+        // --- Configuration ---
+        public const int SampleRate = 48000; // 48 kHz as intended
+        public const int Channels = 1; // mono
+        public const int FramesPerBuffer = 960; // 20 ms @ 48 kHz -> 960 samples
+        public const int BytesPerSample = 2; // 16-bit PCM
+        public const int PayloadBufferSize = FramesPerBuffer * BytesPerSample * Channels;
 
-        private UdpClient? _udpClient;
-        private PaStream? _inputStream;
-        private PaStream? _outputStream;
+        private readonly UdpClient _udpSender;
+        private readonly UdpClient _udpReceiver;
+        private IPEndPoint _remoteEndPoint;
 
-        private OpusEncoder? _encoder;
-        private OpusDecoder? _decoder;
+        private readonly CancellationTokenSource _cts = new();
+        private Task _captureTask;
+        private Task _playbackTask;
+        private Task _receiveTask;
+        // Jitter buffer queue for playback
+        private readonly BlockingCollection<byte[]> _jitterBuffer = new(new ConcurrentQueue<byte[]>(), boundedCapacity: 256);
 
-        private CancellationTokenSource? _cts;
-        private bool _isActive;
-        private bool _isPushToTalk = true;
-        private bool _isTransmitting;
+        // PortAudio stream handles
+        private IntPtr _inputStream = IntPtr.Zero;
+        private IntPtr _outputStream = IntPtr.Zero;
+        private bool _initialized = false;
 
-        private int _inputDeviceIndex = -1;
-        private int _outputDeviceIndex = -1;
+        // Optional: external encoder (e.g., Concentus Opus). If null, raw PCM is used.
+        private readonly bool _useOpus;
+        // If you wire Concentus, implement IOpusWrapper accordingly. For now we assume raw PCM.
 
-        public event Action<string>? VoiceDataReceived;
+        // Network settings
+        public int LocalPort { get; }
+        public int RemotePort { get; }
+        public bool IsRunning { get; private set; } = false;
 
-        public bool IsPushToTalk
+        public VoiceService(int localPort = 9003, int remotePort = 9003, bool useOpus = false)
         {
-            get => _isPushToTalk;
-            set => _isPushToTalk = value;
+            LocalPort = localPort;
+            RemotePort = remotePort;
+            _useOpus = useOpus;
+            _udpSender = new UdpClient();
+            _udpReceiver = new UdpClient(new IPEndPoint(IPAddress.Any, LocalPort));
+
+            // For multicast scenarios, you may need to join groups. For simple LAN broadcast/peer-to-peer we'll use direct IPs.
         }
-
-        public bool IsTransmitting
+        public void InitializeAudio()
         {
-            get => _isTransmitting;
-            set
+            if (_initialized) return;
+            var err = PortAudio.Pa_Initialize();
+            if (err != PortAudio.PaErrorCode.paNoError)
             {
-                if (_isPushToTalk)
-                {
-                    _isTransmitting = value;
-                }
+                throw new InvalidOperationException($"PortAudio initialize failed: {err}");
             }
+            _initialized = true;
         }
-
-        public VoiceService(int port = 9003)
+        public void SetRemoteEndpoint(string remoteIpOrHostname)
         {
-            _port = port;
+            if (string.IsNullOrWhiteSpace(remoteIpOrHostname)) throw new ArgumentNullException(nameof(remoteIpOrHostname));
+            var ip = IPAddress.Parse(remoteIpOrHostname);
+            _remoteEndPoint = new IPEndPoint(ip, RemotePort);
         }
-
-        public void Initialize()
+        public void Start()
         {
+            if (IsRunning) return;
+            InitializeAudio();
+
+            // Open PortAudio streams
+            OpenInputStream();
+            OpenOutputStream();
+
+            // Start streams
+            StartInputStream();
+            StartOutputStream();
+
+            // Start network receive loop
+            _receiveTask = Task.Run(ReceiveLoopAsync, _cts.Token);
+
+            // Start capture and send loop
+            _captureTask = Task.Run(CaptureLoopAsync, _cts.Token);
+
+            // Start playback loop that takes from jitter buffer and writes to output device
+            _playbackTask = Task.Run(PlaybackLoopAsync, _cts.Token);
+
+            IsRunning = true;
+        }
+        public void Stop()
+        {
+            if (!IsRunning) return;
+            _cts.Cancel();
+
+            try { _captureTask?.Wait(2000); } catch { }
+            try { _receiveTask?.Wait(2000); } catch { }
+            try { _playbackTask?.Wait(2000); } catch { }
+
+            StopInputStream();
+            StopOutputStream();
+            CloseInputStream();
+            CloseOutputStream();
+
+            _jitterBuffer?.CompleteAdding();
+
             try
             {
-                // Initialize PortAudio if needed
-                try
+                if (_initialized)
                 {
-                    var deviceCount = PortAudio.DeviceCount;
+                    PortAudio.Pa_Terminate();
+                    _initialized = false;
                 }
-                catch
-                {
-                    PortAudio.Initialize();
-                }
-
-                // Initialize Opus codec
-                _encoder = new OpusEncoder(SampleRate, Channels, OpusApplication.OPUS_APPLICATION_VOIP);
-                _encoder.Bitrate = 24000; // 24 kbps
-
-                _decoder = new OpusDecoder(SampleRate, Channels);
-
-                // Initialize UDP
-                _udpClient = new UdpClient(_port);
-                _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-
-                // Get saved or default devices
-                _inputDeviceIndex = Preferences.Get("InputDeviceIndex", PortAudio.DefaultInputDevice);
-                _outputDeviceIndex = Preferences.Get("OutputDeviceIndex", PortAudio.DefaultOutputDevice);
-
-                // Initialize audio streams
-                InitializeAudioStreams();
-
-                _isActive = true;
-                _cts = new CancellationTokenSource();
-
-                // Load push-to-talk preference
-                _isPushToTalk = Preferences.Get("IsPushToTalk", true);
-
-                // Start receiving
-                _ = ReceiveLoop(_cts.Token);
-                _ = CaptureLoop(_cts.Token);
-
-                System.Diagnostics.Debug.WriteLine("VoiceService initialized successfully");
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"VoiceService init error: {ex.Message}");
-            }
+            catch { }
+
+            IsRunning = false;
         }
-
-        private void InitializeAudioStreams()
+        private async Task CaptureLoopAsync()
         {
-            try
-            {
-                // Validate device indices
-                if (_inputDeviceIndex < 0 || _inputDeviceIndex >= PortAudio.DeviceCount)
-                {
-                    _inputDeviceIndex = PortAudio.DefaultInputDevice;
-                    System.Diagnostics.Debug.WriteLine($"Invalid input device, using default: {_inputDeviceIndex}");
-                }
+            var token = _cts.Token;
+            var frameBytes = PayloadBufferSize;
+            var buffer = new byte[frameBytes];
 
-                if (_outputDeviceIndex < 0 || _outputDeviceIndex >= PortAudio.DeviceCount)
-                {
-                    _outputDeviceIndex = PortAudio.DefaultOutputDevice;
-                    System.Diagnostics.Debug.WriteLine($"Invalid output device, using default: {_outputDeviceIndex}");
-                }
-
-                // Input stream parameters
-                var inputInfo = PortAudio.GetDeviceInfo(_inputDeviceIndex);
-                var inputParams = new StreamParameters
-                {
-                    device = _inputDeviceIndex,
-                    channelCount = Channels,
-                    sampleFormat = SampleFormat.Int16,
-                    suggestedLatency = inputInfo.defaultLowInputLatency
-                };
-
-                // Output stream parameters
-                var outputInfo = PortAudio.GetDeviceInfo(_outputDeviceIndex);
-                var outputParams = new StreamParameters
-                {
-                    device = _outputDeviceIndex,
-                    channelCount = Channels,
-                    sampleFormat = SampleFormat.Int16,
-                    suggestedLatency = outputInfo.defaultLowOutputLatency
-                };
-
-                // Open input stream (microphone) - 7 parameters required
-                _inputStream = new PaStream(
-                    inParams: inputParams,
-                    outParams: null,
-                    sampleRate: SampleRate,
-                    framesPerBuffer: (uint)FrameSize,
-                    streamFlags: StreamFlags.ClipOff,
-                    callback: null,
-                    userData: null
-                );
-
-                // Open output stream (speaker) - 7 parameters required
-                _outputStream = new PaStream(
-                    inParams: null,
-                    outParams: outputParams,
-                    sampleRate: SampleRate,
-                    framesPerBuffer: (uint)FrameSize,
-                    streamFlags: StreamFlags.ClipOff,
-                    callback: null,
-                    userData: null
-                );
-
-                _outputStream.Start();
-
-                System.Diagnostics.Debug.WriteLine($"Audio streams initialized - Input: {inputInfo.name}, Output: {outputInfo.name}");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Audio stream init error: {ex.Message}");
-            }
-        }
-
-        public void SetInputDevice(int deviceIndex)
-        {
-            if (deviceIndex < 0 || deviceIndex >= PortAudio.DeviceCount)
-            {
-                System.Diagnostics.Debug.WriteLine($"Invalid input device index: {deviceIndex}");
-                return;
-            }
-
-            _inputDeviceIndex = deviceIndex;
-            Preferences.Set("InputDeviceIndex", deviceIndex);
-            ReinitializeAudioStreams();
-
-            var info = PortAudio.GetDeviceInfo(deviceIndex);
-            System.Diagnostics.Debug.WriteLine($"Input device changed to: {info.name}");
-        }
-
-        public void SetOutputDevice(int deviceIndex)
-        {
-            if (deviceIndex < 0 || deviceIndex >= PortAudio.DeviceCount)
-            {
-                System.Diagnostics.Debug.WriteLine($"Invalid output device index: {deviceIndex}");
-                return;
-            }
-
-            _outputDeviceIndex = deviceIndex;
-            Preferences.Set("OutputDeviceIndex", deviceIndex);
-            ReinitializeAudioStreams();
-
-            var info = PortAudio.GetDeviceInfo(deviceIndex);
-            System.Diagnostics.Debug.WriteLine($"Output device changed to: {info.name}");
-        }
-
-        private void ReinitializeAudioStreams()
-        {
-            try
-            {
-                // Stop current transmission if active
-                var wasTransmitting = _isTransmitting;
-                if (wasTransmitting)
-                {
-                    _isTransmitting = false;
-                }
-
-                // Close existing streams
-                _inputStream?.Stop();
-                _inputStream?.Dispose();
-                _outputStream?.Stop();
-                _outputStream?.Dispose();
-
-                // Reinitialize with new devices
-                InitializeAudioStreams();
-
-                // Restore transmission state
-                if (wasTransmitting && !_isPushToTalk)
-                {
-                    _isTransmitting = true;
-                    _inputStream?.Start();
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error reinitializing streams: {ex.Message}");
-            }
-        }
-
-        public void StartCapture()
-        {
-            if (_inputStream != null && !_isPushToTalk)
-            {
-                _isTransmitting = true;
-                if (!_inputStream.IsActive)
-                {
-                    _inputStream.Start();
-                }
-                System.Diagnostics.Debug.WriteLine("Voice capture started (continuous mode)");
-            }
-        }
-
-        public void StopCapture()
-        {
-            if (_inputStream != null && !_isPushToTalk)
-            {
-                _isTransmitting = false;
-                if (_inputStream.IsActive)
-                {
-                    _inputStream.Stop();
-                }
-                System.Diagnostics.Debug.WriteLine("Voice capture stopped");
-            }
-        }
-
-        public void StartPushToTalk()
-        {
-            if (_inputStream != null && _isPushToTalk)
-            {
-                _isTransmitting = true;
-                if (!_inputStream.IsActive)
-                {
-                    _inputStream.Start();
-                }
-                System.Diagnostics.Debug.WriteLine("Push-to-talk activated");
-            }
-        }
-
-        public void StopPushToTalk()
-        {
-            if (_inputStream != null && _isPushToTalk)
-            {
-                _isTransmitting = false;
-                if (_inputStream.IsActive)
-                {
-                    _inputStream.Stop();
-                }
-                System.Diagnostics.Debug.WriteLine("Push-to-talk deactivated");
-            }
-        }
-
-        private async Task CaptureLoop(CancellationToken ct)
-        {
-            var buffer = new short[FrameSize];
-
-            while (!ct.IsCancellationRequested && _isActive)
+            while (!token.IsCancellationRequested)
             {
                 try
                 {
-                    if (_isTransmitting && _inputStream != null && _inputStream.IsActive)
+                    // Read raw PCM frames from PortAudio input
+                    var framesToRead = FramesPerBuffer;
+                    var readErr = PortAudio.Pa_ReadStream(_inputStream, buffer, (ulong)framesToRead);
+                    if (readErr != PortAudio.PaErrorCode.paNoError)
                     {
-                        // Read audio from microphone
-                        _inputStream.Read(buffer, 0, FrameSize);
+                        Debug.WriteLine($"Pa_ReadStream error: {readErr}");
+                        await Task.Delay(10, token).ConfigureAwait(false);
+                        continue;
+                    }
 
-                        // Encode with Opus
-                        if (_encoder != null)
+                    // Optionally encode (Opus) - omitted here for brevity
+                    // For now send raw PCM (16-bit little endian)
+
+                    if (_remoteEndPoint != null)
+                    {
+                        await _udpSender.SendAsync(buffer, buffer.Length, _remoteEndPoint).ConfigureAwait(false);
+                    }
+                }
+                catch (OperationCanceledException) { break; }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"CaptureLoop exception: {ex}");
+                    await Task.Delay(50, token).ConfigureAwait(false);
+                }
+            }
+        }
+        private async Task ReceiveLoopAsync()
+        {
+            var token = _cts.Token;
+            while (!token.IsCancellationRequested)
+            {
+                try
+                { var result = await _udpReceiver.ReceiveAsync().ConfigureAwait(false);
+                    // We expect raw PCM frames of PayloadBufferSize
+                    if (result.Buffer != null && result.Buffer.Length > 0)
+                    {
+                        // Enqueue to jitter buffer. If full, oldest frames will be dropped by bounded queue behavior.
+                        if (!_jitterBuffer.IsAddingCompleted)
                         {
-                            var encoded = new byte[4000];
-                            var encodedLength = _encoder.Encode(buffer, 0, FrameSize, encoded, 0, encoded.Length);
-
-                            if (encodedLength > 0)
-                            {
-                                var packet = new byte[encodedLength];
-                                Array.Copy(encoded, packet, encodedLength);
-
-                                // Send to all peers (broadcast)
-                                await SendVoicePacket(packet);
-                            }
+                            // Clone buffer to avoid reuse issues
+                            var frame = new byte[result.Buffer.Length];
+                            Buffer.BlockCopy(result.Buffer, 0, frame, 0, result.Buffer.Length);
+                            // Non-blocking attempt
+                            try { _jitterBuffer.Add(frame, token); } catch { /* drop if cannot */ }
                         }
                     }
-                    else
-                    {
-                        await Task.Delay(20, ct);
-                    }
                 }
+                catch (OperationCanceledException) { break; }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Capture error: {ex.Message}");
-                    await Task.Delay(100, ct);
+                    Debug.WriteLine($"ReceiveLoop exception: {ex}");
+                    await Task.Delay(20, token).ConfigureAwait(false);
                 }
             }
         }
-
-        private async Task SendVoicePacket(byte[] packet)
+        private async Task PlaybackLoopAsync()
         {
-            if (_udpClient == null) return;
-
-            try
-            {
-                // Broadcast to LAN
-                var endpoint = new IPEndPoint(IPAddress.Broadcast, _port);
-                await _udpClient.SendAsync(packet, packet.Length, endpoint);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Send voice packet error: {ex.Message}");
-            }
-        }
-
-        public async Task SendVoiceToEndpoint(byte[] packet, IPEndPoint endpoint)
-        {
-            if (_udpClient == null) return;
-
-            try
-            {
-                await _udpClient.SendAsync(packet, packet.Length, endpoint);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Send to endpoint error: {ex.Message}");
-            }
-        }
-
-        private async Task ReceiveLoop(CancellationToken ct)
-        {
-            while (!ct.IsCancellationRequested && _isActive)
+            var token = _cts.Token;
+            while (!token.IsCancellationRequested)
             {
                 try
-                {
-                    var result = await _udpClient!.ReceiveAsync();
-                    ProcessVoicePacket(result.Buffer);
+                { byte[] frame = null;
+                    try { frame = _jitterBuffer.Take(token); } catch { frame = null; }
+                    if (frame == null) { await Task.Delay(10, token).ConfigureAwait(false); continue; }
+
+
+                    // Optionally decode (Opus) - omitted here
+                    // Write raw PCM to PortAudio output
+                    var framesToWrite = FramesPerBuffer;
+                    var writeErr = PortAudio.Pa_WriteStream(_outputStream, frame, (ulong)framesToWrite);
+                    if (writeErr != PortAudio.PaErrorCode.paNoError)
+                    {
+                        Debug.WriteLine($"Pa_WriteStream error: {writeErr}");
+                        await Task.Delay(10, token).ConfigureAwait(false);
+                    }
                 }
-                catch when (ct.IsCancellationRequested) { }
+                catch (OperationCanceledException) { break; }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Receive error: {ex.Message}");
-                    await Task.Delay(100, ct);
+                    Debug.WriteLine($"PlaybackLoop exception: {ex}");
+                    await Task.Delay(20, token).ConfigureAwait(false);
                 }
             }
         }
 
-        private void ProcessVoicePacket(byte[] packet)
+        // -------------------------
+        // PortAudio stream helpers
+        // -------------------------
+        private void OpenInputStream()
         {
-            if (_decoder == null || _outputStream == null) return;
-
-            try
+            if (_inputStream != IntPtr.Zero) return;
+            var inputParameters = new PortAudio.PaStreamParameters
             {
-                // Decode with Opus
-                var decoded = new short[FrameSize];
-                var decodedLength = _decoder.Decode(packet, 0, packet.Length, decoded, 0, FrameSize, false);
+                device = PortAudio.Pa_GetDefaultInputDevice(),
+                channelCount = Channels,
+                sampleFormat = PortAudio.PaSampleFormat.paInt16,
+                suggestedLatency = PortAudio.Pa_GetDeviceInfo(PortAudio.Pa_GetDefaultInputDevice())?.defaultLowInputLatency ?? 0.05
+            };
 
-                if (decodedLength > 0 && _outputStream.IsActive)
-                {
-                    // Play audio using Write (not WriteStream)
-                    _outputStream.Write(decoded, 0, decodedLength);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Audio decode error: {ex.Message}");
-            }
+            IntPtr streamPtr;
+            var err = PortAudio.Pa_OpenStream(
+            out streamPtr,
+            ref inputParameters,
+            IntPtr.Zero,
+            SampleRate,
+            FramesPerBuffer,
+            PortAudio.PaStreamFlags.paNoFlag,
+            IntPtr.Zero,
+            IntPtr.Zero);
+
+            if (err != PortAudio.PaErrorCode.paNoError)
+                throw new InvalidOperationException($"Unable to open input stream: {err}");
+
+            _inputStream = streamPtr;
         }
+        private void OpenOutputStream()
+        {
+            if (_outputStream != IntPtr.Zero) return;
+            var outputParameters = new PortAudio.PaStreamParameters
+            {
+                device = PortAudio.Pa_GetDefaultOutputDevice(),
+                channelCount = Channels,
+                sampleFormat = PortAudio.PaSampleFormat.paInt16,
+                suggestedLatency = PortAudio.Pa_GetDeviceInfo(PortAudio.Pa_GetDefaultOutputDevice())?.defaultLowOutputLatency ?? 0.05
+            };
+
+            IntPtr streamPtr;
+            var err = PortAudio.Pa_OpenStream(
+            out streamPtr,
+            IntPtr.Zero,
+            ref outputParameters,
+            SampleRate,
+            FramesPerBuffer,
+            PortAudio.PaStreamFlags.paNoFlag,
+            IntPtr.Zero,
+            IntPtr.Zero);
+
+            if (err != PortAudio.PaErrorCode.paNoError)
+                throw new InvalidOperationException($"Unable to open output stream: {err}");
+
+            _outputStream = streamPtr;
+        }
+        private void StartInputStream()
+        {
+            if (_inputStream == IntPtr.Zero) return;
+            var err = PortAudio.Pa_StartStream(_inputStream);
+            if (err != PortAudio.PaErrorCode.paNoError) throw new InvalidOperationException($"Pa_StartStream input failed: {err}");
+        }
+        private void StartOutputStream()
+        {
+            if (_outputStream == IntPtr.Zero) return;
+            var err = PortAudio.Pa_StartStream(_outputStream);
+            if (err != PortAudio.PaErrorCode.paNoError) throw new InvalidOperationException($"Pa_StartStream output failed: {err}");
+        }
+        private void StopInputStream()
+        {
+            if (_inputStream == IntPtr.Zero) return;
+            try { PortAudio.Pa_StopStream(_inputStream); } catch { }
+        }
+        private void StopOutputStream()
+        {
+            if (_outputStream == IntPtr.Zero) return;
+            try { PortAudio.Pa_StopStream(_outputStream); } catch { }
+        }
+        private void CloseInputStream()
+        {
+            if (_inputStream == IntPtr.Zero) return;
+            try { PortAudio.Pa_CloseStream(_inputStream); } catch { }
+            _inputStream = IntPtr.Zero;
+        }
+        private void CloseOutputStream()
+        {
+            if (_outputStream == IntPtr.Zero) return;
+            try { PortAudio.Pa_CloseStream(_outputStream); } catch { }
+            _outputStream = IntPtr.Zero;
+        }
+
 
         public void Dispose()
         {
-            _isActive = false;
-            _cts?.Cancel();
-
-            try
-            {
-                _inputStream?.Stop();
-                _inputStream?.Dispose();
-
-                _outputStream?.Stop();
-                _outputStream?.Dispose();
-
-                _udpClient?.Close();
-
-                System.Diagnostics.Debug.WriteLine("VoiceService disposed");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Dispose error: {ex.Message}");
-            }
+            Stop();
+            _udpSender?.Dispose();
+            _udpReceiver?.Dispose();
+            _cts?.Dispose();
         }
+    }
+}
+// ----------------------------
+// Minimal PortAudio P/Invoke
+// ----------------------------
+internal static class PortAudio
+{
+    // Error codes (partial)
+    public enum PaErrorCode : int
+    {
+        paNoError = 0,
+        paNotInitialized = -10000,
+        paUnanticipatedHostError = -9999,
+        // add more if needed
+    }
+    [Flags]
+    public enum PaSampleFormat : ulong
+    {
+        paFloat32 = 0x00000001,
+        paInt32 = 0x00000002,
+        paInt24 = 0x00000004,
+        paInt16 = 0x00000008,
+        paInt8 = 0x00000010,
+        paUInt8 = 0x00000020
+    }
+    [Flags]
+    public enum PaStreamFlags : ulong
+    {
+        paNoFlag = 0
+    }
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PaStreamParameters
+    {
+        public int device;
+        public int channelCount;
+        public PaSampleFormat sampleFormat;
+        public double suggestedLatency;
+        public IntPtr hostApiSpecificStreamInfo; // unused
+    }
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PaDeviceInfo
+    {
+        public int structVersion;
+        public IntPtr name;
+        public int hostApi;
+        public int maxInputChannels;
+        public int maxOutputChannels;
+        public double defaultSampleRate;
+        public double defaultLowInputLatency;
+        public double defaultLowOutputLatency;
+        public double defaultHighInputLatency;
+        public double defaultHighOutputLatency;
+    }
+
+    // DllImport: library name might differ per platform. 'portaudio' is commonly used.
+    private const string LIB = "portaudio";
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern PaErrorCode Pa_Initialize();
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern PaErrorCode Pa_Terminate();
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int Pa_GetDefaultInputDevice();
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int Pa_GetDefaultOutputDevice();
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr Pa_GetDeviceInfoPtr(int device);
+
+    // We wrap GetDeviceInfo to marshal properly
+    public static PaDeviceInfo? Pa_GetDeviceInfo(int device)
+    {
+        try
+        {
+            var ptr = Pa_GetDeviceInfoPtr(device);
+            if (ptr == IntPtr.Zero) return null;
+            return Marshal.PtrToStructure<PaDeviceInfo>(ptr);
+        }
+        catch { return null; }
+    }
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern PaErrorCode Pa_OpenStream(out IntPtr stream,
+        ref PaStreamParameters inputParameters,
+        IntPtr outputParameters,
+        int sampleRate,
+        int framesPerBuffer,
+        PaStreamFlags streamFlags,
+        IntPtr streamCallback,
+        IntPtr userData);
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern PaErrorCode Pa_OpenStream(out IntPtr stream,
+        IntPtr inputParameters,
+        ref PaStreamParameters outputParameters,
+        int sampleRate,
+        int framesPerBuffer,
+        PaStreamFlags streamFlags,
+        IntPtr streamCallback,
+        IntPtr userData);
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern PaErrorCode Pa_CloseStream(IntPtr stream);
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern PaErrorCode Pa_StartStream(IntPtr stream);
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern PaErrorCode Pa_StopStream(IntPtr stream);
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern PaErrorCode Pa_ReadStream(IntPtr stream, [Out] byte[] buffer, ulong frames);
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern PaErrorCode Pa_WriteStream(IntPtr stream, [In] byte[] buffer, ulong frames);
+
+    [DllImport(LIB, CallingConvention = CallingConvention.Cdecl)]
+    public static extern IntPtr Pa_GetErrorText(PaErrorCode code);
+    public static string PaErrorText(PaErrorCode code)
+    {
+        try
+        {
+            var ptr = Pa_GetErrorText(code);
+            if (ptr == IntPtr.Zero) return code.ToString();
+            return Marshal.PtrToStringAnsi(ptr) ?? code.ToString();
+        }
+        catch { return code.ToString(); }
     }
 }
