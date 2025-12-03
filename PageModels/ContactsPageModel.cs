@@ -51,18 +51,23 @@ namespace Proximity.PageModels
 
         public ContactsPageModel(PeerInfo peer, ChatService chatService)
         {
-            _peer = peer ?? throw new ArgumentNullException(nameof(peer));
+            // Allow null peer - will show "Select a peer" message
+            _peer = peer;
             _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
             _voiceService = new VoiceService();
 
             Messages = new ObservableCollection<ChatMessageViewModel>();
 
-            // Subscribe to message events
-            _chatService.OnMessageReceived += OnMessageReceived;
+            // Only subscribe to events if we have a valid peer
+            if (_peer != null)
+            {
+                // Subscribe to message events
+                _chatService.OnMessageReceived += OnMessageReceived;
 
-            // Subscribe to voice events
-            _voiceService.OnCallStarted += () => IsVoiceActive = true;
-            _voiceService.OnCallEnded += () => IsVoiceActive = false;
+                // Subscribe to voice events
+                _voiceService.OnCallStarted += () => IsVoiceActive = true;
+                _voiceService.OnCallEnded += () => IsVoiceActive = false;
+            }
 
             // Initialize commands
             SendCommand = new Command(async () => await SendMessageAsync(), () => !string.IsNullOrWhiteSpace(MessageText));
@@ -80,7 +85,16 @@ namespace Proximity.PageModels
 
         private async Task SendMessageAsync()
         {
-            if (string.IsNullOrWhiteSpace(MessageText) || _peer == null)
+            if (_peer == null)
+            {
+                await Application.Current.MainPage.DisplayAlert(
+                    "No Peer Selected",
+                    "Please select a peer from the Discover page first.",
+                    "OK");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(MessageText))
                 return;
 
             try
@@ -116,6 +130,15 @@ namespace Proximity.PageModels
 
         private async Task ToggleVoiceAsync()
         {
+            if (_peer == null)
+            {
+                await Application.Current.MainPage.DisplayAlert(
+                    "No Peer Selected",
+                    "Please select a peer from the Discover page first.",
+                    "OK");
+                return;
+            }
+
             try
             {
                 if (IsVoiceActive)
@@ -135,8 +158,8 @@ namespace Proximity.PageModels
 
         private void OnMessageReceived(ChatMessage message)
         {
-            // Only show messages from this peer
-            if (message.FromDeviceId == _peer.DeviceId)
+            // Only show messages from this peer (if peer is selected)
+            if (_peer != null && message.FromDeviceId == _peer.DeviceId)
             {
                 Application.Current.MainPage.Dispatcher.Dispatch(() =>
                 {
@@ -158,7 +181,10 @@ namespace Proximity.PageModels
 
         public void Dispose()
         {
-            _chatService.OnMessageReceived -= OnMessageReceived;
+            if (_peer != null)
+            {
+                _chatService.OnMessageReceived -= OnMessageReceived;
+            }
             _voiceService?.Dispose();
         }
     }

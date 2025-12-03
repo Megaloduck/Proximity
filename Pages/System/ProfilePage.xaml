@@ -170,10 +170,8 @@
             <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
                     Stroke="{DynamicResource BorderColor}"
                     StrokeThickness="1"
-                    Padding="20">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12"/>
-                </Border.StrokeShape>
+                    Padding="20"
+                    StrokeShape="RoundRectangle 12">
 
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Your Information"
@@ -181,7 +179,8 @@
                            FontAttributes="Bold"
                            TextColor="{DynamicResource PrimaryTextColor}"/>
 
-                    <Grid ColumnDefinitions="Auto,*" RowSpacing="8" ColumnSpacing="10">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto"
+                          RowSpacing="8" ColumnSpacing="10">
                         <Label Grid.Row="0" Grid.Column="0" 
                                Text="User ID:"
                                TextColor="{DynamicResource SecondaryTextColor}"/>

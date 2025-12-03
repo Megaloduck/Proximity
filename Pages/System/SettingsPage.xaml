@@ -97,7 +97,7 @@
                                FontSize="14"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
                         <Picker ItemsSource="{Binding OutputDevices}"
-                                ItemDisplayBinding="{Binding Name}"
+                                ItemDisplayBinding="{Binding Name}"                                
                                 SelectedItem="{Binding SelectedOutputDevice}"
                                 Title="Select speaker"
                                 FontSize="14"/>
