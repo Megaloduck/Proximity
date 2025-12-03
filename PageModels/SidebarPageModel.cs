@@ -148,7 +148,7 @@ namespace Proximity.PageModels
 
                     if (discoveryService != null)
                     {
-                        NavigateAction?.Invoke(new SettingsPage(discoveryService, voiceService));
+                        NavigateAction?.Invoke(new SettingsPage());
                     }
                 }
             });

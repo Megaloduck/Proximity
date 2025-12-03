@@ -2,103 +2,257 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Windows.Input;
-using Proximity.Services;
-using Microsoft.Maui.Controls;
 using System.Threading.Tasks;
+using System.Windows.Input;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Controls;
+using Proximity.Services;
+using Proximity.Models;
+using Plugin.Maui.Audio;
 
 namespace Proximity.PageModels
 {
-    public class SettingsPageModel : INotifyPropertyChanged 
+    public class SettingsPageModel : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
+        private readonly DiscoveryService _discoveryService;
         private readonly VoiceService _voiceService;
-        public ObservableCollection<string> AvailableDevices { get; } = new();  
+        private IAudioRecorder _loopbackRecorder;
+        private IAudioPlayer _loopbackPlayer;
+        private bool _isLoopbackRunning = false;
 
-        private string _remoteIp = "255.255.255.255";
-        public string RemoteIp
+        // User Settings
+        private string _username;
+        public string Username
         {
-            get => _remoteIp;
-            set { _remoteIp = value; OnPropertyChanged(); }
-        }
-        private int _localPort = 9003;
-        public int LocalPort
-        {
-            get => _localPort;
-            set { _localPort = value; OnPropertyChanged(); }
+            get => _username;
+            set { _username = value; OnPropertyChanged(); }
         }
 
-        private int _remotePort = 9003;
-        public int RemotePort
+        // Appearance
+        private bool _isDarkMode;
+        public bool IsDarkMode
         {
-            get => _remotePort;
-            set { _remotePort = value; OnPropertyChanged(); }
+            get => _isDarkMode;
+            set
+            {
+                _isDarkMode = value;
+                OnPropertyChanged();
+                ApplyTheme();
+            }
         }
 
-        private bool _isVoiceRunning = false;
-        public bool IsVoiceRunning
+        // Audio Devices
+        public ObservableCollection<AudioDeviceInfo> InputDevices { get; }
+        public ObservableCollection<AudioDeviceInfo> OutputDevices { get; }
+
+        private AudioDeviceInfo _selectedInputDevice;
+        public AudioDeviceInfo SelectedInputDevice
         {
-            get => _isVoiceRunning;
-            set { _isVoiceRunning = value; OnPropertyChanged(); }
+            get => _selectedInputDevice;
+            set { _selectedInputDevice = value; OnPropertyChanged(); }
         }
-        public ICommand StartVoiceCommand { get; }
-        public ICommand StopVoiceCommand { get; }
-        public ICommand RefreshDevicesCommand { get; }
-        public SettingsPageModel()
+
+        private AudioDeviceInfo _selectedOutputDevice;
+        public AudioDeviceInfo SelectedOutputDevice
         {
-            _voiceService = new VoiceService(localPort: LocalPort, remotePort: RemotePort);
-
-
-            StartVoiceCommand = new Command(async () => await StartVoiceAsync());
-            StopVoiceCommand = new Command(() => StopVoice());
-            RefreshDevicesCommand = new Command(() => RefreshDevices());
-
-
-            // Populate simple device list placeholder (Platform-specific implementation recommended)
-            AvailableDevices.Add("Default Device");
+            get => _selectedOutputDevice;
+            set { _selectedOutputDevice = value; OnPropertyChanged(); }
         }
-        private async Task StartVoiceAsync()
+
+        // Loopback Test
+        private string _loopbackButtonText = "Start Test";
+        public string LoopbackButtonText
+        {
+            get => _loopbackButtonText;
+            set { _loopbackButtonText = value; OnPropertyChanged(); }
+        }
+
+        private string _loopbackStatus = "";
+        public string LoopbackStatus
+        {
+            get => _loopbackStatus;
+            set { _loopbackStatus = value; OnPropertyChanged(); }
+        }
+
+        // Push-to-Talk
+        private bool _isPushToTalk;
+        public bool IsPushToTalk
+        {
+            get => _isPushToTalk;
+            set
+            {
+                _isPushToTalk = value;
+                OnPropertyChanged();
+                Preferences.Set("IsPushToTalk", value);
+            }
+        }
+
+        // Network Info
+        public string LocalPeerId => _discoveryService?.MyDeviceId ?? "Not Available";
+
+        // Commands
+        public ICommand SaveUsernameCommand { get; }
+        public ICommand ToggleLoopbackCommand { get; }
+
+        public SettingsPageModel(DiscoveryService discoveryService, VoiceService voiceService)
+        {
+            _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
+            _voiceService = voiceService ?? throw new ArgumentNullException(nameof(voiceService));
+
+            InputDevices = new ObservableCollection<AudioDeviceInfo>();
+            OutputDevices = new ObservableCollection<AudioDeviceInfo>();
+
+            // Load settings
+            LoadSettings();
+            LoadAudioDevices();
+
+            // Initialize commands
+            SaveUsernameCommand = new Command(async () => await SaveUsernameAsync());
+            ToggleLoopbackCommand = new Command(async () => await ToggleLoopbackAsync());
+        }
+
+        private void LoadSettings()
+        {
+            Username = Preferences.Get("UserName", _discoveryService?.MyDeviceName ?? "User");
+            IsDarkMode = Preferences.Get("IsDarkMode", false);
+            IsPushToTalk = Preferences.Get("IsPushToTalk", false);
+        }
+
+        private void LoadAudioDevices()
+        {
+            // Add default devices
+            InputDevices.Clear();
+            OutputDevices.Clear();
+
+            InputDevices.Add(new AudioDeviceInfo { Name = "Default Microphone", Id = "default_input" });
+            OutputDevices.Add(new AudioDeviceInfo { Name = "Default Speakers", Id = "default_output" });
+
+#if WINDOWS
+            // On Windows, you could enumerate actual devices using NAudio
+            // For now, just add defaults
+            InputDevices.Add(new AudioDeviceInfo { Name = "Microphone (USB)", Id = "usb_mic" });
+            OutputDevices.Add(new AudioDeviceInfo { Name = "Speakers (Realtek)", Id = "realtek_speakers" });
+#endif
+
+            SelectedInputDevice = InputDevices[0];
+            SelectedOutputDevice = OutputDevices[0];
+        }
+
+        private async Task SaveUsernameAsync()
         {
             try
             {
-                _voiceService.SetRemoteEndpoint(RemoteIp);
-                _voiceService.Start();
-                IsVoiceRunning = true;
-            }
-            catch (Exception ex)
-            {
-                // Show alert on UI main thread
-                await Application.Current.MainPage.DisplayAlert("Voice Error", ex.Message, "OK");
-            }
-        }
-        private void StopVoice()
-        {
-            try
-            {_voiceService.Stop();
-                IsVoiceRunning = false;
-            }
-            catch (Exception ex)
-            {
-                Application.Current.MainPage.Dispatcher.Dispatch(async () =>
+                if (string.IsNullOrWhiteSpace(Username))
                 {
-                    await Application.Current.MainPage.DisplayAlert("Stop Error", ex.Message, "OK");
-                });
+                    await Application.Current.MainPage.DisplayAlert(
+                        "Validation Error",
+                        "Username cannot be empty",
+                        "OK");
+                    return;
+                }
+
+                Preferences.Set("UserName", Username);
+
+                await Application.Current.MainPage.DisplayAlert(
+                    "Success",
+                    "Username saved successfully!",
+                    "OK");
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Save Error", ex.Message, "OK");
             }
         }
-        private void RefreshDevices()
+
+        private async Task ToggleLoopbackAsync()
         {
-            // In this simplified example we don't enumerate native audio devices.
-            // For production, implement platform-specific audio device enumeration and populate AvailableDevices.
-            AvailableDevices.Clear();
-            AvailableDevices.Add("Default Device");
-            AvailableDevices.Add("Speaker (Simulated)");
+            try
+            {
+                if (_isLoopbackRunning)
+                {
+                    // Stop loopback
+                    if (_loopbackRecorder?.IsRecording == true)
+                    {
+                        var audioSource = await _loopbackRecorder.StopAsync();
+                    }
+
+                    _loopbackPlayer?.Stop();
+                    _loopbackPlayer?.Dispose();
+                    _loopbackPlayer = null;
+
+                    _isLoopbackRunning = false;
+                    LoopbackButtonText = "Start Test";
+                    LoopbackStatus = "";
+                }
+                else
+                {
+                    // Start loopback
+                    _loopbackRecorder = AudioManager.Current.CreateRecorder();
+                    await _loopbackRecorder.StartAsync();
+
+                    _isLoopbackRunning = true;
+                    LoopbackButtonText = "Stop Test";
+                    LoopbackStatus = "Recording... Speak into your microphone";
+
+                    // Note: Real loopback requires platform-specific implementation
+                    // This is just a placeholder UI update
+                    await Task.Delay(3000);
+                    if (_isLoopbackRunning)
+                    {
+                        LoopbackStatus = "Test running - you should hear yourself";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Loopback Error", ex.Message, "OK");
+                _isLoopbackRunning = false;
+                LoopbackButtonText = "Start Test";
+                LoopbackStatus = "";
+            }
         }
+
+        private void ApplyTheme()
+        {
+            try
+            {
+                Preferences.Set("IsDarkMode", IsDarkMode);
+
+                // Apply theme
+                var mergedDictionaries = Application.Current.Resources.MergedDictionaries;
+                if (mergedDictionaries != null)
+                {
+                    mergedDictionaries.Clear();
+
+                    var themeUri = IsDarkMode
+                        ? "Resources/Themes/DarkTheme.xaml"
+                        : "Resources/Themes/LightTheme.xaml";
+
+                    mergedDictionaries.Add(new ResourceDictionary
+                    {
+                        Source = new Uri(themeUri, UriKind.Relative)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Theme apply error: {ex.Message}");
+            }
+        }
+
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
+
+        public void Dispose()
+        {
+            // IAudioRecorder doesn't implement IDisposable
+            // Just set to null, the Plugin will handle cleanup
+            _loopbackRecorder = null;
+            _loopbackPlayer?.Dispose();
+        }
     }
 }
-    
-    

@@ -1,110 +1,127 @@
 ﻿using System;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using Microsoft.Maui.Controls;
 using Proximity.Services;
 
 namespace Proximity.PageModels
 {
-    public class ProfilePageModel : BasePageModel
+    public class ProfilePageModel : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
+
         private readonly DiscoveryService _discoveryService;
 
-        private string _displayName = string.Empty;
-        private string _statusMessage = string.Empty;
-        private string _selectedEmoji = "😀";
-        private string _localPeerId = string.Empty;
-        private string _accountCreated = string.Empty;
-
+        // Profile Properties
+        private string _displayName;
         public string DisplayName
         {
             get => _displayName;
-            set => SetProperty(ref _displayName, value);
+            set
+            {
+                if (_displayName != value && value?.Length <= 30)
+                {
+                    _displayName = value;
+                    OnPropertyChanged();
+                }
+            }
         }
 
+        private string _statusMessage;
         public string StatusMessage
         {
             get => _statusMessage;
-            set => SetProperty(ref _statusMessage, value);
+            set
+            {
+                if (_statusMessage != value && value?.Length <= 60)
+                {
+                    _statusMessage = value;
+                    OnPropertyChanged();
+                }
+            }
         }
 
+        private string _selectedEmoji = "😀";
         public string SelectedEmoji
         {
             get => _selectedEmoji;
-            set => SetProperty(ref _selectedEmoji, value);
+            set { _selectedEmoji = value; OnPropertyChanged(); }
         }
 
-        public string LocalPeerId
-        {
-            get => _localPeerId;
-            set => SetProperty(ref _localPeerId, value);
-        }
+        // User Info
+        public string LocalPeerId => _discoveryService?.MyDeviceId ?? "Unknown";
+        public string AccountCreated => Preferences.Get("AccountCreatedDate", DateTime.Now.ToString("yyyy-MM-dd"));
 
-        public string AccountCreated
-        {
-            get => _accountCreated;
-            set => SetProperty(ref _accountCreated, value);
-        }
-
+        // Commands
         public ICommand SelectEmojiCommand { get; }
         public ICommand SaveProfileCommand { get; }
 
         public ProfilePageModel(DiscoveryService discoveryService)
         {
-            _discoveryService = discoveryService;
+            _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
 
-            SelectEmojiCommand = new Command<string>(SelectEmoji);
-            SaveProfileCommand = new Command(SaveProfile);
-
+            // Load saved profile
             LoadProfile();
+
+            // Initialize commands
+            SelectEmojiCommand = new Command<string>((emoji) => SelectedEmoji = emoji);
+            SaveProfileCommand = new Command(async () => await SaveProfileAsync());
         }
 
         private void LoadProfile()
         {
-            DisplayName = Preferences.Get("ProfileDisplayName", Preferences.Get("UserName", "User"));
-            StatusMessage = Preferences.Get("ProfileStatus", "");
+            DisplayName = Preferences.Get("ProfileDisplayName", _discoveryService?.MyDeviceName ?? "User");
+            StatusMessage = Preferences.Get("ProfileStatusMessage", "Available");
             SelectedEmoji = Preferences.Get("ProfileEmoji", "😀");
-            LocalPeerId = _discoveryService.GetLocalId();
 
-            // Get account creation date (or set it now if first time)
-            var createdDate = Preferences.Get("AccountCreatedDate", string.Empty);
-            if (string.IsNullOrEmpty(createdDate))
+            // Ensure account created date exists
+            if (!Preferences.ContainsKey("AccountCreatedDate"))
             {
-                createdDate = DateTime.Now.ToString("MMMM dd, yyyy");
-                Preferences.Set("AccountCreatedDate", createdDate);
+                Preferences.Set("AccountCreatedDate", DateTime.Now.ToString("yyyy-MM-dd"));
             }
-            AccountCreated = createdDate;
         }
 
-        private void SelectEmoji(string emoji)
+        private async Task SaveProfileAsync()
         {
-            SelectedEmoji = emoji;
+            try
+            {
+                // Validate
+                if (string.IsNullOrWhiteSpace(DisplayName))
+                {
+                    await Application.Current.MainPage.DisplayAlert(
+                        "Validation Error",
+                        "Display name cannot be empty",
+                        "OK");
+                    return;
+                }
+
+                // Save to preferences
+                Preferences.Set("ProfileDisplayName", DisplayName);
+                Preferences.Set("ProfileStatusMessage", StatusMessage ?? "");
+                Preferences.Set("ProfileEmoji", SelectedEmoji);
+
+                // Update discovery service name if needed
+                // Note: This would require restarting discovery to broadcast new name
+                // For now, just save to preferences
+
+                await Application.Current.MainPage.DisplayAlert(
+                    "Success",
+                    "Profile saved successfully!",
+                    "OK");
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert(
+                    "Save Error",
+                    ex.Message,
+                    "OK");
+            }
         }
 
-        private async void SaveProfile()
+        protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
-            // Validate display name
-            if (string.IsNullOrWhiteSpace(DisplayName))
-            {
-                await Application.Current!.MainPage!.DisplayAlert(
-                    "Error",
-                    "Display name cannot be empty",
-                    "OK"
-                );
-                return;
-            }
-
-            // Save to preferences
-            Preferences.Set("ProfileDisplayName", DisplayName);
-            Preferences.Set("ProfileStatus", StatusMessage);
-            Preferences.Set("ProfileEmoji", SelectedEmoji);
-
-            // Also update the legacy UserName for backward compatibility
-            Preferences.Set("UserName", DisplayName);
-
-            await Application.Current!.MainPage!.DisplayAlert(
-                "Success",
-                "Profile saved! Your updated information will be visible to other users.",
-                "OK"
-            );
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
     }
 }
