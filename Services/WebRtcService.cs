@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Threading.Tasks;
 using WebRTCme; 
-using WebRTCme. Maui;
 
 namespace Proximity.Services
 {
@@ -25,6 +24,7 @@ namespace Proximity.Services
         private readonly List<RTCIceCandidateInit> _queuedRemoteCandidates = new();
         public event Action OnRemoteStreamAvailable;
         public event Action OnCallEnded;
+
         public WebRtcService(ISignalingTransport signaling)
         {
             _signaling = signaling ?? throw new ArgumentNullException(nameof(signaling));
