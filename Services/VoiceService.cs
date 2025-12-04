@@ -122,7 +122,7 @@ namespace Proximity.Services
                 _isInCall = true;
                 OnCallStarted?.Invoke();
 
-                Debug.WriteLine($"[Voice] Call started with {targetPeer.DeviceName} ({targetPeer.IpAddress})");
+                Debug.WriteLine($"[Voice] Call started with {targetPeer.Name} ({targetPeer.IpAddress})");
             }
             catch (Exception ex)
             {

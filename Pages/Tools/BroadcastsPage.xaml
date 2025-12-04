@@ -2,11 +2,259 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Proximity.Pages.Tools.BroadcastsPage"
-             Title="BroadcastsPage">
-    <VerticalStackLayout>
-        <Label 
-            Text="Welcome to .NET MAUI!"
-            VerticalOptions="Center" 
-            HorizontalOptions="Center" />
-    </VerticalStackLayout>
+             Title="Broadcasts">
+
+    <Grid RowDefinitions="Auto,*,Auto" Padding="20" RowSpacing="15">
+
+        <!-- Header -->
+        <Border Grid.Row="0"
+                BackgroundColor="{DynamicResource CardBackgroundColor}"
+                Stroke="{DynamicResource AccentColor}"
+                StrokeThickness="2"
+                Padding="20"
+                StrokeShape="RoundRectangle 12">
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="15">
+                <Label Grid.Column="0"
+                       Text="📢"
+                       FontSize="48"
+                       VerticalOptions="Center"/>
+
+                <VerticalStackLayout Grid.Column="1" Spacing="5">
+                    <Label Text="Network Broadcasts"
+                           FontSize="22"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
+                    <Label Text="Send messages to all connected peers at once"
+                           FontSize="13"
+                           TextColor="{DynamicResource SecondaryTextColor}"/>
+                    <HorizontalStackLayout Spacing="10" Margin="0,5,0,0">
+                        <Label Text="{Binding ConnectedPeersCount, StringFormat='📡 {0} peers online'}"
+                               FontSize="12"
+                               TextColor="{DynamicResource SuccessColor}"/>
+                        <Label Text="•" TextColor="{DynamicResource TertiaryTextColor}"/>
+                        <Label Text="{Binding BroadcastsSent, StringFormat='{0} sent'}"
+                               FontSize="12"
+                               TextColor="{DynamicResource TertiaryTextColor}"/>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Grid>
+        </Border>
+
+        <!-- Broadcast History -->
+        <Border Grid.Row="1"
+                BackgroundColor="{DynamicResource CardBackgroundColor}"
+                Stroke="{DynamicResource BorderColor}"
+                StrokeThickness="1"
+                StrokeShape="RoundRectangle 12">
+
+            <Grid RowDefinitions="Auto,*">
+                <!-- History Header -->
+                <Grid Grid.Row="0" 
+                      Padding="20,15" 
+                      ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout Spacing="2">
+                        <Label Text="Broadcast History"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               TextColor="{DynamicResource PrimaryTextColor}"/>
+                        <Label Text="Recent broadcasts sent and received"
+                               FontSize="12"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                    </VerticalStackLayout>
+
+                    <Button Grid.Column="1"
+                            Text="🗑️ Clear"
+                            Command="{Binding ClearHistoryCommand}"
+                            Padding="12,6"
+                            FontSize="12"
+                            VerticalOptions="Center"/>
+                </Grid>
+
+                <!-- History List -->
+                <CollectionView Grid.Row="1"
+                               ItemsSource="{Binding BroadcastHistory}"
+                               EmptyView="No broadcasts yet. Send your first message!"
+                               Margin="10">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="10,8"
+                                    Padding="15"
+                                    BackgroundColor="{DynamicResource PageBackgroundColor}"
+                                    Stroke="{DynamicResource BorderColor}"
+                                    StrokeThickness="1"
+                                    StrokeShape="RoundRectangle 10">
+                                <Border.Triggers>
+                                    <!-- Sent broadcasts -->
+                                    <DataTrigger TargetType="Border" 
+                                               Binding="{Binding IsSentByMe}" 
+                                               Value="True">
+                                        <Setter Property="Stroke" Value="{DynamicResource PrimaryColor}"/>
+                                        <Setter Property="StrokeThickness" Value="2"/>
+                                    </DataTrigger>
+                                </Border.Triggers>
+
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                    <!-- Avatar/Icon -->
+                                    <Border Grid.Column="0"
+                                            WidthRequest="45"
+                                            HeightRequest="45"
+                                            StrokeShape="RoundRectangle 22"
+                                            VerticalOptions="Start">
+                                        <Border.Triggers>
+                                            <DataTrigger TargetType="Border" 
+                                                       Binding="{Binding IsSentByMe}" 
+                                                       Value="True">
+                                                <Setter Property="BackgroundColor" Value="{DynamicResource PrimaryColor}"/>
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Border" 
+                                                       Binding="{Binding IsSentByMe}" 
+                                                       Value="False">
+                                                <Setter Property="BackgroundColor" Value="{DynamicResource SecondaryColor}"/>
+                                            </DataTrigger>
+                                        </Border.Triggers>
+                                        <Label Text="{Binding SenderAvatar, TargetNullValue='📢'}"
+                                               FontSize="24"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center"/>
+                                    </Border>
+
+                                    <!-- Message Content -->
+                                    <VerticalStackLayout Grid.Column="1" 
+                                                        Spacing="6"
+                                                        VerticalOptions="Center">
+                                        <!-- Sender Name and Badge -->
+                                        <HorizontalStackLayout Spacing="8">
+                                            <Label Text="{Binding SenderName}"
+                                                   FontSize="15"
+                                                   FontAttributes="Bold"
+                                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                                            <Border Padding="5,2"
+                                                   BackgroundColor="{DynamicResource PrimaryColor}"
+                                                   StrokeShape="RoundRectangle 4"
+                                                   IsVisible="{Binding IsSentByMe}">
+                                                <Label Text="You"
+                                                       FontSize="10"
+                                                       TextColor="White"/>
+                                            </Border>
+                                        </HorizontalStackLayout>
+
+                                        <!-- Message Text -->
+                                        <Label Text="{Binding Message}"
+                                               FontSize="14"
+                                               TextColor="{DynamicResource PrimaryTextColor}"
+                                               LineBreakMode="WordWrap"/>
+
+                                        <!-- Metadata -->
+                                        <HorizontalStackLayout Spacing="10">
+                                            <Label Text="{Binding Timestamp, StringFormat='{0:MMM dd, HH:mm}'}"
+                                                   FontSize="11"
+                                                   TextColor="{DynamicResource TertiaryTextColor}"/>
+                                            <Label Text="•" 
+                                                   FontSize="11"
+                                                   TextColor="{DynamicResource TertiaryTextColor}"/>
+                                            <Label Text="{Binding DeliveredCount, StringFormat='Delivered to {0} peers'}"
+                                                   FontSize="11"
+                                                   IsVisible="{Binding IsSentByMe}"
+                                                   TextColor="{DynamicResource SuccessColor}"/>
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+
+                                    <!-- Priority Indicator -->
+                                    <Border Grid.Column="2"
+                                           WidthRequest="8"
+                                           HeightRequest="50"
+                                           StrokeShape="RoundRectangle 4"
+                                           VerticalOptions="Center"
+                                           IsVisible="{Binding IsUrgent}">
+                                        <Border.Triggers>
+                                            <DataTrigger TargetType="Border" 
+                                                       Binding="{Binding Priority}" 
+                                                       Value="High">
+                                                <Setter Property="BackgroundColor" Value="{DynamicResource DangerColor}"/>
+                                            </DataTrigger>
+                                            <DataTrigger TargetType="Border" 
+                                                       Binding="{Binding Priority}" 
+                                                       Value="Normal">
+                                                <Setter Property="BackgroundColor" Value="{DynamicResource AccentColor}"/>
+                                            </DataTrigger>
+                                        </Border.Triggers>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
+        </Border>
+
+        <!-- Broadcast Composer -->
+        <Border Grid.Row="2"
+                BackgroundColor="{DynamicResource CardBackgroundColor}"
+                Stroke="{DynamicResource PrimaryColor}"
+                StrokeThickness="2"
+                Padding="15"
+                StrokeShape="RoundRectangle 12">
+
+            <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
+                <!-- Composer Header -->
+                <HorizontalStackLayout Grid.Row="0" Spacing="10">
+                    <Label Text="Compose Broadcast"
+                           FontSize="15"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"
+                           VerticalOptions="Center"/>
+
+                    <!-- Priority Picker -->
+                    <Picker ItemsSource="{Binding PriorityOptions}"
+                            SelectedItem="{Binding SelectedPriority}"
+                            FontSize="12"
+                            WidthRequest="120"
+                            VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+
+                <!-- Message Input -->
+                <Border Grid.Row="1"
+                       BackgroundColor="{DynamicResource PageBackgroundColor}"
+                       Stroke="{DynamicResource BorderColor}"
+                       StrokeThickness="1"
+                       StrokeShape="RoundRectangle 10"
+                       Padding="12">
+                    <Editor Text="{Binding BroadcastMessage}"
+                           Placeholder="Type your broadcast message here..."
+                           PlaceholderColor="{DynamicResource TertiaryTextColor}"
+                           HeightRequest="80"
+                           FontSize="14"/>
+                </Border>
+
+                <!-- Actions Row -->
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                    <!-- Character Counter -->
+                    <Label Grid.Column="0"
+                           Text="{Binding BroadcastMessage.Length, StringFormat='{0}/500 characters'}"
+                           FontSize="11"
+                           TextColor="{DynamicResource TertiaryTextColor}"
+                           VerticalOptions="Center"/>
+
+                    <!-- Clear Button -->
+                    <Button Grid.Column="1"
+                            Text="Clear"
+                            Command="{Binding ClearMessageCommand}"
+                            Padding="15,8"
+                            FontSize="13"
+                            BackgroundColor="{DynamicResource SecondaryColor}"/>
+
+                    <!-- Send Broadcast Button -->
+                    <Button Grid.Column="2"
+                            Text="📢 Send Broadcast"
+                            Command="{Binding SendBroadcastCommand}"
+                            IsEnabled="{Binding HasMessage}"
+                            Padding="20,8"
+                            FontSize="13"
+                            FontAttributes="Bold"/>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
 </ContentPage>

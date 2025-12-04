@@ -63,7 +63,7 @@ public class DashboardPageModel : INotifyPropertyChanged
         DiscoveredPeersCount = _discoveryService.DiscoveredPeers.Count;
         MessagesSentCount = _chatService.GetTotalMessagesSent();
 
-        VoiceStatus = _voiceService.IsListening ? "Active" : "Inactive";
+        VoiceStatus = _voiceService.IsInCall ? "Active" : "Inactive";
         ConnectionStatus = _discoveryService.IsRunning ? "🟢 Online" : "🔴 Offline";
         IsConnected = _discoveryService.IsRunning;
 
