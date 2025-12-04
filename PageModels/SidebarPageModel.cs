@@ -58,8 +58,9 @@ namespace Proximity.PageModels
         public ICommand NavigateToContactsCommand { get; private set; }
         public ICommand NavigateToRoomsCommand { get; private set; }
         public ICommand NavigateToAuditoriumCommand { get; private set; }
+        public ICommand NavigateToBroadcastsCommand { get; private set; }
 
-        public ICommand NavigateToUsersCommand { get; private set; }
+        public ICommand NavigateToProfileCommand { get; private set; }
         public ICommand NavigateToSettingsCommand { get; private set; }
 
         // -------------------------------
@@ -121,9 +122,21 @@ namespace Proximity.PageModels
 
             NavigateToRoomsCommand = new Command(() => NavigateAction?.Invoke(new RoomsPage()));
             NavigateToAuditoriumCommand = new Command(() => NavigateAction?.Invoke(new AuditoriumPage()));
+            NavigateToBroadcastsCommand = new Command(() => NavigateAction?.Invoke(new BroadcastsPage()));
 
             // System
-            NavigateToUsersCommand = new Command(() => NavigateAction?.Invoke(new UsersPage()));
+            NavigateToProfileCommand = new Command(() =>
+            {
+                var app = Application.Current as App;
+                var services = app?.Handler?.MauiContext?.Services; if (services != null)
+                {
+                    var discoveryService = services.GetService(typeof(DiscoveryService)) as DiscoveryService;
+                    if (discoveryService != null)
+                    {
+                        NavigateAction?.Invoke(new ProfilePage(discoveryService));
+                    }
+                }
+            });
 
             NavigateToSettingsCommand = new Command(() =>
             {
@@ -137,7 +150,7 @@ namespace Proximity.PageModels
 
                     if (discoveryService != null)
                     {
-                        NavigateAction?.Invoke(new SettingsPage(discoveryService, voiceService));
+                        NavigateAction?.Invoke(new SettingsPage());
                     }
                 }
             });

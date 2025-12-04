@@ -31,21 +31,19 @@ namespace Proximity
             builder.Services.AddLogging(configure => configure.AddDebug());
 #endif
 
-            // Register Services as Singletons (shared state across app)
-            builder.Services.AddSingleton<DiscoveryService>();
+            // ===== Register Services =====
+
+            // Discovery Service - Singleton so all pages share same instance
+            builder.Services.AddSingleton<DiscoveryService>(sp =>
+            {
+                var deviceName = Preferences.Get("UserName", "User");
+                return new DiscoveryService(deviceName, port: 9001);
+            });
+            // Messaging Service - Singleton, depends on Discovery
             builder.Services.AddSingleton<ChatService>(sp =>
             {
-                var discoveryService = sp.GetRequiredService<DiscoveryService>();
-                var userName = Preferences.Get("UserName", "User_" + Random.Shared.Next(1000, 9999));
-                var chatService = new ChatService(discoveryService.GetLocalId(), userName);
-                chatService.StartListening();
-                return chatService;
-            });
-            builder.Services.AddSingleton<VoiceService>(sp =>
-            {
-                var voiceService = new VoiceService();
-                voiceService.Initialize();
-                return voiceService;
+                var discovery = sp.GetRequiredService<DiscoveryService>();
+                return new ChatService(discovery.MyDeviceId, discovery.MyDeviceName);
             });
 
             // Core Fundamental Pages
@@ -65,9 +63,12 @@ namespace Proximity
             builder.Services.AddTransient<ContactsPageModel>();
             builder.Services.AddTransient<RoomsPage>();
             builder.Services.AddTransient<AuditoriumPage>();
+            builder.Services.AddTransient<BroadcastsPage>();
+
 
             // System Pages            
-            builder.Services.AddTransient<UsersPage>();
+            builder.Services.AddTransient<ProfilePage>();
+            builder.Services.AddTransient<ProfilePageModel>();
             builder.Services.AddTransient<SettingsPage>();
             builder.Services.AddTransient<SettingsPageModel>();
 

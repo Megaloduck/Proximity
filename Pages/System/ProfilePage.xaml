@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Proximity.Pages.System.ProfilePage"
+             Title="Profile">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+
+            <!-- Profile Header -->
+            <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
+                    Stroke="{DynamicResource PrimaryColor}"
+                    StrokeThickness="2"
+                    Padding="30">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12"/>
+                </Border.StrokeShape>
+
+                <VerticalStackLayout Spacing="15">
+                    <Label Text="Your Profile Card"
+                           FontSize="22"
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                    <Label Text="This is how other users will see you when they discover you on the network"
+                           FontSize="13"
+                           HorizontalOptions="Center"
+                           TextColor="{DynamicResource SecondaryTextColor}"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Profile Customization -->
+            <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1"
+                    Padding="20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12"/>
+                </Border.StrokeShape>
+
+                <VerticalStackLayout Spacing="15">
+                    <Label Text="Customize Your Card"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                    <!-- Display Name -->
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="Display Name"
+                               FontSize="14"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                        <Entry Text="{Binding DisplayName}"
+                               Placeholder="Enter your display name"
+                               FontSize="16"
+                               MaxLength="30"/>
+                        <Label Text="{Binding DisplayName.Length, StringFormat='{0}/30 characters'}"
+                               FontSize="11"
+                               TextColor="{DynamicResource TertiaryTextColor}"/>
+                    </VerticalStackLayout>
+
+                    <!-- Status Message -->
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="Status Message"
+                               FontSize="14"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                        <Entry Text="{Binding StatusMessage}"
+                               Placeholder="What's on your mind?"
+                               FontSize="14"
+                               MaxLength="60"/>
+                        <Label Text="{Binding StatusMessage.Length, StringFormat='{0}/60 characters'}"
+                               FontSize="11"
+                               TextColor="{DynamicResource TertiaryTextColor}"/>
+                    </VerticalStackLayout>
+
+                    <!-- Avatar Emoji -->
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="Avatar Icon"
+                               FontSize="14"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+
+                        <HorizontalStackLayout Spacing="10" >
+                            <Button Text="😀" Command="{Binding SelectEmojiCommand}" CommandParameter="😀" WidthRequest="50" HeightRequest="50"/>
+                            <Button Text="😎" Command="{Binding SelectEmojiCommand}" CommandParameter="😎" WidthRequest="50" HeightRequest="50"/>
+                            <Button Text="🤖" Command="{Binding SelectEmojiCommand}" CommandParameter="🤖" WidthRequest="50" HeightRequest="50"/>
+                            <Button Text="👾" Command="{Binding SelectEmojiCommand}" CommandParameter="👾" WidthRequest="50" HeightRequest="50"/>
+                            <Button Text="🚀" Command="{Binding SelectEmojiCommand}" CommandParameter="🚀" WidthRequest="50" HeightRequest="50"/>
+                            <Button Text="⚡" Command="{Binding SelectEmojiCommand}" CommandParameter="⚡" WidthRequest="50" HeightRequest="50"/>
+                            <Button Text="🔥" Command="{Binding SelectEmojiCommand}" CommandParameter="🔥" WidthRequest="50" HeightRequest="50"/>
+                            <Button Text="💎" Command="{Binding SelectEmojiCommand}" CommandParameter="💎" WidthRequest="50" HeightRequest="50"/>
+                            <Button Text="🎮" Command="{Binding SelectEmojiCommand}" CommandParameter="🎮" WidthRequest="50" HeightRequest="50"/>
+                            <Button Text="🎨" Command="{Binding SelectEmojiCommand}" CommandParameter="🎨" WidthRequest="50" HeightRequest="50"/>
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+
+                    <!-- Save Button -->
+                    <Button Text="Save Profile"
+                            Command="{Binding SaveProfileCommand}"
+                            Margin="0,10,0,0"
+                            HorizontalOptions="Fill"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Profile Preview -->
+            <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1"
+                    Padding="20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12"/>
+                </Border.StrokeShape>
+
+                <VerticalStackLayout Spacing="15">
+                    <Label Text="Preview"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                    <Label Text="This is how your card will appear in the Discover page:"
+                           FontSize="13"
+                           TextColor="{DynamicResource SecondaryTextColor}"/>
+
+                    <!-- Preview Card -->
+                    <Border BackgroundColor="{DynamicResource PageBackgroundColor}"
+                            Stroke="{DynamicResource PrimaryColor}"
+                            StrokeThickness="2"
+                            Padding="15"
+                            Margin="0,10,0,0">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8"/>
+                        </Border.StrokeShape>
+
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="15">
+                            <!-- Avatar -->
+                            <Border Grid.Column="0"
+                                    WidthRequest="60"
+                                    HeightRequest="60"
+                                    BackgroundColor="{DynamicResource PrimaryColor}"
+                                    VerticalOptions="Start">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="30"/>
+                                </Border.StrokeShape>
+                                <Label Text="{Binding SelectedEmoji}"
+                                       FontSize="32"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center"/>
+                            </Border>
+
+                            <!-- Info -->
+                            <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                                <Label Text="{Binding DisplayName}"
+                                       FontSize="18"
+                                       FontAttributes="Bold"
+                                       TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                                <Label Text="{Binding StatusMessage}"
+                                       FontSize="14"
+                                       TextColor="{DynamicResource SecondaryTextColor}"/>
+
+                                <Label Text="🟢 Online"
+                                       FontSize="12"
+                                       TextColor="{DynamicResource SuccessColor}"/>
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- User ID Info -->
+            <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1"
+                    Padding="20"
+                    StrokeShape="RoundRectangle 12">
+
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Your Information"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto"
+                          RowSpacing="8" ColumnSpacing="10">
+                        <Label Grid.Row="0" Grid.Column="0" 
+                               Text="User ID:"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                        <Label Grid.Row="0" Grid.Column="1" 
+                               Text="{Binding LocalPeerId}"
+                               TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                        <Label Grid.Row="1" Grid.Column="0" 
+                               Text="Account Created:"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                        <Label Grid.Row="1" Grid.Column="1" 
+                               Text="{Binding AccountCreated}"
+                               TextColor="{DynamicResource PrimaryTextColor}"/>
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

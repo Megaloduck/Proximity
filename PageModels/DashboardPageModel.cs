@@ -1,131 +1,127 @@
 ﻿using System;
-using System.Linq;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using Microsoft.Maui.Controls;
 using Proximity.Services;
 
 namespace Proximity.PageModels
 {
-    public class DashboardPageModel : BasePageModel
+    public class DashboardPageModel : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
+
         private readonly DiscoveryService _discoveryService;
         private readonly ChatService _chatService;
         private readonly VoiceService _voiceService;
-        private System.Threading.Timer? _refreshTimer;
 
-        private string _welcomeMessage = string.Empty;
-        private int _connectedPeersCount;
-        private int _discoveredPeersCount;
-        private int _messagesSentCount;
-        private string _voiceStatus = "Ready";
-        private string _localPeerId = string.Empty;
-        private string _username = string.Empty;
-        private string _connectionStatus = "Online";
-
+        // Welcome
+        private string _welcomeMessage = "Stay connected with your local network";
         public string WelcomeMessage
         {
             get => _welcomeMessage;
-            set => SetProperty(ref _welcomeMessage, value);
+            set { _welcomeMessage = value; OnPropertyChanged(); }
         }
 
-        public int ConnectedPeersCount
-        {
-            get => _connectedPeersCount;
-            set => SetProperty(ref _connectedPeersCount, value);
-        }
+        // Statistics
+        public int ConnectedPeersCount => _discoveryService?.DiscoveredPeers?.Count(p => p.IsOnline) ?? 0;
+        public int DiscoveredPeersCount => _discoveryService?.DiscoveredPeers?.Count ?? 0;
 
-        public int DiscoveredPeersCount
-        {
-            get => _discoveredPeersCount;
-            set => SetProperty(ref _discoveredPeersCount, value);
-        }
-
+        private int _messagesSentCount = 0;
         public int MessagesSentCount
         {
             get => _messagesSentCount;
-            set => SetProperty(ref _messagesSentCount, value);
+            set { _messagesSentCount = value; OnPropertyChanged(); }
         }
 
-        public string VoiceStatus
-        {
-            get => _voiceStatus;
-            set => SetProperty(ref _voiceStatus, value);
-        }
+        public string VoiceStatus => _voiceService?.IsInCall == true ? "In Call" : "Ready";
 
-        public string LocalPeerId
-        {
-            get => _localPeerId;
-            set => SetProperty(ref _localPeerId, value);
-        }
+        // Network Info
+        public string LocalPeerId => _discoveryService?.MyDeviceId ?? "Not Set";
+        public string Username => _discoveryService?.MyDeviceName ?? "Guest";
+        public string ConnectionStatus => "Online";
 
-        public string Username
-        {
-            get => _username;
-            set => SetProperty(ref _username, value);
-        }
-
-        public string ConnectionStatus
-        {
-            get => _connectionStatus;
-            set => SetProperty(ref _connectionStatus, value);
-        }
-
-        public ICommand RefreshCommand { get; }
+        // Commands
         public ICommand NavigateToDiscoverCommand { get; }
         public ICommand NavigateToContactsCommand { get; }
+        public ICommand RefreshCommand { get; }
 
         public DashboardPageModel(DiscoveryService discoveryService, ChatService chatService, VoiceService voiceService)
         {
-            _discoveryService = discoveryService;
-            _chatService = chatService;
-            _voiceService = voiceService;
+            _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
+            _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
+            _voiceService = voiceService ?? throw new ArgumentNullException(nameof(voiceService));
 
-            RefreshCommand = new Command(RefreshStats);
-            NavigateToDiscoverCommand = new Command(NavigateToDiscover);
-            NavigateToContactsCommand = new Command(NavigateToContacts);
-
-            InitializeDashboard();
-            StartAutoRefresh();
-        }
-
-        private void InitializeDashboard()
-        {
-            Username = Preferences.Get("UserName", "User");
-            LocalPeerId = _discoveryService.GetLocalId().Substring(0, 8) + "...";
-
-            var hour = DateTime.Now.Hour;
-            var greeting = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
-            WelcomeMessage = $"{greeting}, {Username}! 👋";
-
-            RefreshStats();
-        }
-
-        private void RefreshStats()
-        {
-            DiscoveredPeersCount = _discoveryService.GetDiscoveredPeers().Length;
-            ConnectedPeersCount = _chatService.GetConnectedPeerIds().Length;
-            MessagesSentCount = _chatService.GetMessageHistory().Count(m => m.SenderId == _discoveryService.GetLocalId());
-            VoiceStatus = _voiceService != null ? "Ready" : "Unavailable";
-            ConnectionStatus = DiscoveredPeersCount > 0 ? "🟢 Online" : "🔴 Searching...";
-        }
-
-        private void StartAutoRefresh()
-        {
-            _refreshTimer = new System.Threading.Timer(_ =>
+            // Subscribe to events
+            if (_discoveryService.DiscoveredPeers != null)
             {
-                MainThread.BeginInvokeOnMainThread(() => RefreshStats());
-            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
+                _discoveryService.DiscoveredPeers.CollectionChanged += (s, e) =>
+                {
+                    OnPropertyChanged(nameof(ConnectedPeersCount));
+                    OnPropertyChanged(nameof(DiscoveredPeersCount));
+                };
+            }
+
+            _chatService.OnMessageReceived += (msg) =>
+            {
+                MessagesSentCount++;
+            };
+
+            _voiceService.OnCallStarted += () => OnPropertyChanged(nameof(VoiceStatus));
+            _voiceService.OnCallEnded += () => OnPropertyChanged(nameof(VoiceStatus));
+
+            // Initialize commands
+            NavigateToDiscoverCommand = new Command(async () => await NavigateToDiscoverAsync());
+            NavigateToContactsCommand = new Command(async () => await NavigateToContactsAsync());
+            RefreshCommand = new Command(() => RefreshStatistics());
+
+            // Set personalized welcome message
+            UpdateWelcomeMessage();
         }
 
-        private void NavigateToDiscover()
+        private void UpdateWelcomeMessage()
         {
-            Application.Current?.MainPage?.Navigation.PushAsync(
-                new Pages.MainMenu.DiscoverPage(_discoveryService, _chatService));
+            var hour = DateTime.Now.Hour;
+            var greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+            WelcomeMessage = $"{greeting}, {Username}! Ready to connect?";
         }
 
-        private void NavigateToContacts()
+        private async Task NavigateToDiscoverAsync()
         {
-            Application.Current?.MainPage?.Navigation.PushAsync(
-                new Pages.Tools.ContactsPage(null, _chatService));
+            try
+            {
+                await Shell.Current.GoToAsync("//DiscoverPage");
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Navigation Error", ex.Message, "OK");
+            }
+        }
+
+        private async Task NavigateToContactsAsync()
+        {
+            try
+            {
+                await Shell.Current.GoToAsync("//ContactsPage");
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Navigation Error", ex.Message, "OK");
+            }
+        }
+
+        private void RefreshStatistics()
+        {
+            OnPropertyChanged(nameof(ConnectedPeersCount));
+            OnPropertyChanged(nameof(DiscoveredPeersCount));
+            OnPropertyChanged(nameof(VoiceStatus));
+            OnPropertyChanged(nameof(ConnectionStatus));
+            UpdateWelcomeMessage();
+        }
+
+        protected void OnPropertyChanged([CallerMemberName] string name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
     }
 }

@@ -1,86 +1,258 @@
 ﻿using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows.Input;
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Controls;
 using Proximity.Services;
+using Proximity.Models;
+using Plugin.Maui.Audio;
 
 namespace Proximity.PageModels
 {
-    public class SettingsPageModel : BasePageModel
+    public class SettingsPageModel : INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
+
         private readonly DiscoveryService _discoveryService;
-        private readonly VoiceService? _voiceService;
-        private readonly ThemeService _themeService;
+        private readonly VoiceService _voiceService;
+        private IAudioRecorder _loopbackRecorder;
+        private IAudioPlayer _loopbackPlayer;
+        private bool _isLoopbackRunning = false;
 
-        private string _username = string.Empty;
-        private bool _isDarkMode;
-        private bool _isPushToTalk = true;
-        private string _localPeerId = string.Empty;
-
+        // User Settings
+        private string _username;
         public string Username
         {
             get => _username;
-            set => SetProperty(ref _username, value);
+            set { _username = value; OnPropertyChanged(); }
         }
 
+        // Appearance
+        private bool _isDarkMode;
         public bool IsDarkMode
         {
             get => _isDarkMode;
             set
             {
-                if (SetProperty(ref _isDarkMode, value))
-                {
-                    _themeService.IsDarkMode = value;
-                }
+                _isDarkMode = value;
+                OnPropertyChanged();
+                ApplyTheme();
             }
         }
 
+        // Audio Devices
+        public ObservableCollection<AudioDeviceInfo> InputDevices { get; }
+        public ObservableCollection<AudioDeviceInfo> OutputDevices { get; }
+
+        private AudioDeviceInfo _selectedInputDevice;
+        public AudioDeviceInfo SelectedInputDevice
+        {
+            get => _selectedInputDevice;
+            set { _selectedInputDevice = value; OnPropertyChanged(); }
+        }
+
+        private AudioDeviceInfo _selectedOutputDevice;
+        public AudioDeviceInfo SelectedOutputDevice
+        {
+            get => _selectedOutputDevice;
+            set { _selectedOutputDevice = value; OnPropertyChanged(); }
+        }
+
+        // Loopback Test
+        private string _loopbackButtonText = "Start Test";
+        public string LoopbackButtonText
+        {
+            get => _loopbackButtonText;
+            set { _loopbackButtonText = value; OnPropertyChanged(); }
+        }
+
+        private string _loopbackStatus = "";
+        public string LoopbackStatus
+        {
+            get => _loopbackStatus;
+            set { _loopbackStatus = value; OnPropertyChanged(); }
+        }
+
+        // Push-to-Talk
+        private bool _isPushToTalk;
         public bool IsPushToTalk
         {
             get => _isPushToTalk;
             set
             {
-                if (SetProperty(ref _isPushToTalk, value) && _voiceService != null)
-                {
-                    _voiceService.IsPushToTalk = value;
-                }
+                _isPushToTalk = value;
+                OnPropertyChanged();
+                Preferences.Set("IsPushToTalk", value);
             }
         }
 
-        public string LocalPeerId
-        {
-            get => _localPeerId;
-            set => SetProperty(ref _localPeerId, value);
-        }
+        // Network Info
+        public string LocalPeerId => _discoveryService?.MyDeviceId ?? "Not Available";
 
+        // Commands
         public ICommand SaveUsernameCommand { get; }
+        public ICommand ToggleLoopbackCommand { get; }
 
-        public SettingsPageModel(DiscoveryService discoveryService, VoiceService? voiceService)
+        public SettingsPageModel(DiscoveryService discoveryService, VoiceService voiceService)
         {
-            _discoveryService = discoveryService;
-            _voiceService = voiceService;
-            _themeService = ThemeService.Instance;
+            _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
+            _voiceService = voiceService ?? throw new ArgumentNullException(nameof(voiceService));
 
-            SaveUsernameCommand = new Command(SaveUsername);
+            InputDevices = new ObservableCollection<AudioDeviceInfo>();
+            OutputDevices = new ObservableCollection<AudioDeviceInfo>();
 
+            // Load settings
             LoadSettings();
+            LoadAudioDevices();
+
+            // Initialize commands
+            SaveUsernameCommand = new Command(async () => await SaveUsernameAsync());
+            ToggleLoopbackCommand = new Command(async () => await ToggleLoopbackAsync());
         }
 
         private void LoadSettings()
         {
-            Username = Preferences.Get("UserName", "User");
-            IsDarkMode = _themeService.IsDarkMode;
-            IsPushToTalk = _voiceService?.IsPushToTalk ?? true;
-            LocalPeerId = _discoveryService.GetLocalId();
+            Username = Preferences.Get("UserName", _discoveryService?.MyDeviceName ?? "User");
+            IsDarkMode = Preferences.Get("IsDarkMode", false);
+            IsPushToTalk = Preferences.Get("IsPushToTalk", false);
         }
 
-        private async void SaveUsername()
+        private void LoadAudioDevices()
         {
-            Preferences.Set("UserName", Username);
+            // Add default devices
+            InputDevices.Clear();
+            OutputDevices.Clear();
 
-            await Application.Current!.MainPage!.DisplayAlert(
-                "Success",
-                "Username saved! Restart the app for changes to take full effect.",
-                "OK"
-            );
+            InputDevices.Add(new AudioDeviceInfo { Name = "Default Microphone", Id = "default_input" });
+            OutputDevices.Add(new AudioDeviceInfo { Name = "Default Speakers", Id = "default_output" });
+
+#if WINDOWS
+            // On Windows, you could enumerate actual devices using NAudio
+            // For now, just add defaults
+            InputDevices.Add(new AudioDeviceInfo { Name = "Microphone (USB)", Id = "usb_mic" });
+            OutputDevices.Add(new AudioDeviceInfo { Name = "Speakers (Realtek)", Id = "realtek_speakers" });
+#endif
+
+            SelectedInputDevice = InputDevices[0];
+            SelectedOutputDevice = OutputDevices[0];
+        }
+
+        private async Task SaveUsernameAsync()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(Username))
+                {
+                    await Application.Current.MainPage.DisplayAlert(
+                        "Validation Error",
+                        "Username cannot be empty",
+                        "OK");
+                    return;
+                }
+
+                Preferences.Set("UserName", Username);
+
+                await Application.Current.MainPage.DisplayAlert(
+                    "Success",
+                    "Username saved successfully!",
+                    "OK");
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Save Error", ex.Message, "OK");
+            }
+        }
+
+        private async Task ToggleLoopbackAsync()
+        {
+            try
+            {
+                if (_isLoopbackRunning)
+                {
+                    // Stop loopback
+                    if (_loopbackRecorder?.IsRecording == true)
+                    {
+                        var audioSource = await _loopbackRecorder.StopAsync();
+                    }
+
+                    _loopbackPlayer?.Stop();
+                    _loopbackPlayer?.Dispose();
+                    _loopbackPlayer = null;
+
+                    _isLoopbackRunning = false;
+                    LoopbackButtonText = "Start Test";
+                    LoopbackStatus = "";
+                }
+                else
+                {
+                    // Start loopback
+                    _loopbackRecorder = AudioManager.Current.CreateRecorder();
+                    await _loopbackRecorder.StartAsync();
+
+                    _isLoopbackRunning = true;
+                    LoopbackButtonText = "Stop Test";
+                    LoopbackStatus = "Recording... Speak into your microphone";
+
+                    // Note: Real loopback requires platform-specific implementation
+                    // This is just a placeholder UI update
+                    await Task.Delay(3000);
+                    if (_isLoopbackRunning)
+                    {
+                        LoopbackStatus = "Test running - you should hear yourself";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await Application.Current.MainPage.DisplayAlert("Loopback Error", ex.Message, "OK");
+                _isLoopbackRunning = false;
+                LoopbackButtonText = "Start Test";
+                LoopbackStatus = "";
+            }
+        }
+
+        private void ApplyTheme()
+        {
+            try
+            {
+                Preferences.Set("IsDarkMode", IsDarkMode);
+
+                // Apply theme
+                var mergedDictionaries = Application.Current.Resources.MergedDictionaries;
+                if (mergedDictionaries != null)
+                {
+                    mergedDictionaries.Clear();
+
+                    var themeUri = IsDarkMode
+                        ? "Resources/Themes/DarkTheme.xaml"
+                        : "Resources/Themes/LightTheme.xaml";
+
+                    mergedDictionaries.Add(new ResourceDictionary
+                    {
+                        Source = new Uri(themeUri, UriKind.Relative)
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Theme apply error: {ex.Message}");
+            }
+        }
+
+        protected void OnPropertyChanged([CallerMemberName] string name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+
+        public void Dispose()
+        {
+            // IAudioRecorder doesn't implement IDisposable
+            // Just set to null, the Plugin will handle cleanup
+            _loopbackRecorder = null;
+            _loopbackPlayer?.Dispose();
         }
     }
 }

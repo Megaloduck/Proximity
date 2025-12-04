@@ -1,253 +1,304 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using NAudio.Wave;
-using Concentus.Structs;
-using Concentus.Enums;
+using Proximity.Models;
+using Plugin.Maui.Audio;
 
 namespace Proximity.Services
 {
     public class VoiceService : IDisposable
     {
-        private const int SampleRate = 48000;
-        private const int FrameSize = 960; // 20ms at 48kHz
-        private const int Channels = 1;
-        private readonly int _port;
+        private const int VOICE_PORT = 9002;
+        private const int CAPTURE_INTERVAL_MS = 20; // 20ms chunks
+        private const int JITTER_BUFFER_SIZE = 5; // Buffer 5 packets (100ms)
+        private const int MAX_PACKET_SIZE = 8192; // 8KB max per packet
 
-        private UdpClient? _udpClient;
-        private WaveInEvent? _waveIn;
-        private WaveOutEvent? _waveOut;
-        private BufferedWaveProvider? _waveProvider;
+        private UdpClient _udpSender;
+        private UdpClient _udpReceiver;
+        private CancellationTokenSource _cts;
 
-        private OpusEncoder? _encoder;
-        private OpusDecoder? _decoder;
+        private IAudioRecorder _recorder;
+        private IAudioPlayer _currentPlayer;
 
-        private CancellationTokenSource? _cts;
-        private bool _isActive;
-        private bool _isPushToTalk = true;
-        private bool _isTransmitting;
+        private Task _captureTask;
+        private Task _receiveTask;
+        private Task _playbackTask;
 
-        public event Action<string>? VoiceDataReceived;
+        private readonly ConcurrentQueue<byte[]> _audioQueue;
+        private readonly SemaphoreSlim _audioQueueSemaphore;
 
-        public bool IsPushToTalk
+        private bool _isInCall = false;
+        private string _remoteIp;
+
+        public event Action OnCallStarted;
+        public event Action OnCallEnded;
+        public event Action<string> OnError;
+
+        public bool IsInCall => _isInCall;
+
+        public VoiceService()
         {
-            get => _isPushToTalk;
-            set => _isPushToTalk = value;
+            _audioQueue = new ConcurrentQueue<byte[]>();
+            _audioQueueSemaphore = new SemaphoreSlim(0);
         }
 
-        public bool IsTransmitting
+        public async Task StartCallAsync(PeerInfo targetPeer)
         {
-            get => _isTransmitting;
-            set
+            if (_isInCall)
             {
-                if (_isPushToTalk)
-                {
-                    _isTransmitting = value;
-                }
+                throw new InvalidOperationException("Already in a call");
             }
-        }
 
-        public VoiceService(int port = 9003)
-        {
-            _port = port;
-        }
+            if (targetPeer == null)
+            {
+                throw new ArgumentNullException(nameof(targetPeer));
+            }
 
-        public void Initialize()
-        {
             try
             {
-                // Initialize Opus codec - FIXED: Proper Create method call
-                _encoder = new OpusEncoder(SampleRate, Channels, OpusApplication.OPUS_APPLICATION_VOIP);
-                _encoder.Bitrate = 24000; // 24 kbps
-
-                _decoder = new OpusDecoder(SampleRate, Channels);
-
-                // Initialize UDP
-                _udpClient = new UdpClient(_port);
-                _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-
-                // Initialize audio output
-                _waveOut = new WaveOutEvent();
-                _waveProvider = new BufferedWaveProvider(new WaveFormat(SampleRate, 16, Channels))
-                {
-                    BufferDuration = TimeSpan.FromSeconds(2),
-                    DiscardOnBufferOverflow = true
-                };
-                _waveOut.Init(_waveProvider);
-                _waveOut.Play();
-
-                // Initialize audio input
-                _waveIn = new WaveInEvent
-                {
-                    WaveFormat = new WaveFormat(SampleRate, 16, Channels),
-                    BufferMilliseconds = 20
-                };
-                _waveIn.DataAvailable += OnAudioDataAvailable;
-
-                _isActive = true;
+                _remoteIp = targetPeer.IpAddress;
                 _cts = new CancellationTokenSource();
 
-                // Start receiving
-                _ = ReceiveLoop(_cts.Token);
+                // Setup UDP
+                _udpSender = new UdpClient();
+                _udpReceiver = new UdpClient(VOICE_PORT);
+
+                // Setup audio recorder
+                _recorder = AudioManager.Current.CreateRecorder();
+
+                // Start recording
+                await _recorder.StartAsync();
+
+                // Start tasks
+                _captureTask = Task.Run(() => CaptureAndSendLoopAsync(_cts.Token));
+                _receiveTask = Task.Run(() => ReceiveLoopAsync(_cts.Token));
+                _playbackTask = Task.Run(() => PlaybackLoopAsync(_cts.Token));
+
+                _isInCall = true;
+                OnCallStarted?.Invoke();
+
+                Debug.WriteLine($"[Voice] Call started with {targetPeer.DeviceName} ({targetPeer.IpAddress})");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"VoiceService init error: {ex.Message}");
+                Debug.WriteLine($"[Voice] Start call failed: {ex.Message}");
+                await EndCallAsync();
+                OnError?.Invoke($"Failed to start call: {ex.Message}");
+                throw;
             }
         }
 
-        public void StartCapture()
+        public async Task EndCallAsync()
         {
-            if (_waveIn != null && !_isPushToTalk)
-            {
-                _isTransmitting = true;
-                _waveIn.StartRecording();
-            }
-        }
-
-        public void StopCapture()
-        {
-            if (_waveIn != null && !_isPushToTalk)
-            {
-                _isTransmitting = false;
-                _waveIn.StopRecording();
-            }
-        }
-
-        public void StartPushToTalk()
-        {
-            if (_waveIn != null && _isPushToTalk)
-            {
-                _isTransmitting = true;
-                _waveIn.StartRecording();
-            }
-        }
-
-        public void StopPushToTalk()
-        {
-            if (_waveIn != null && _isPushToTalk)
-            {
-                _isTransmitting = false;
-                _waveIn.StopRecording();
-            }
-        }
-
-        private void OnAudioDataAvailable(object? sender, WaveInEventArgs e)
-        {
-            if (!_isTransmitting || _encoder == null) return;
+            if (!_isInCall)
+                return;
 
             try
             {
-                // Convert bytes to shorts
-                var shorts = new short[e.BytesRecorded / 2];
-                Buffer.BlockCopy(e.Buffer, 0, shorts, 0, e.BytesRecorded);
+                _cts?.Cancel();
 
-                // Process in frames
-                for (int i = 0; i < shorts.Length; i += FrameSize)
+                // Wait for tasks to complete
+                await Task.WhenAll(
+                    _captureTask ?? Task.CompletedTask,
+                    _receiveTask ?? Task.CompletedTask,
+                    _playbackTask ?? Task.CompletedTask
+                );
+
+                // Stop and dispose audio
+                if (_recorder?.IsRecording == true)
                 {
-                    if (i + FrameSize > shorts.Length) break;
-
-                    var frame = new short[FrameSize];
-                    Array.Copy(shorts, i, frame, 0, FrameSize);
-
-                    // Encode with Opus
-                    var encoded = new byte[4000];
-                    var encodedLength = _encoder.Encode(frame, 0, FrameSize, encoded, 0, encoded.Length);
-
-                    if (encodedLength > 0)
-                    {
-                        var packet = new byte[encodedLength];
-                        Array.Copy(encoded, packet, encodedLength);
-
-                        // Send to all peers (broadcast)
-                        _ = SendVoicePacket(packet);
-                    }
+                    await _recorder.StopAsync();
                 }
+
+                _currentPlayer?.Stop();
+                _currentPlayer?.Dispose();
+                _currentPlayer = null;
+
+                // Close network
+                _udpSender?.Close();
+                _udpReceiver?.Close();
+
+                // Clear queue
+                while (_audioQueue.TryDequeue(out _)) { }
+
+                _isInCall = false;
+                OnCallEnded?.Invoke();
+
+                Debug.WriteLine("[Voice] Call ended");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Audio encode error: {ex.Message}");
+                Debug.WriteLine($"[Voice] End call error: {ex.Message}");
             }
         }
 
-        private async Task SendVoicePacket(byte[] packet)
+        private async Task CaptureAndSendLoopAsync(CancellationToken token)
         {
-            if (_udpClient == null) return;
+            var endpoint = new IPEndPoint(IPAddress.Parse(_remoteIp), VOICE_PORT);
+            var lastCaptureTime = DateTime.UtcNow;
 
-            try
-            {
-                // Broadcast to LAN
-                var endpoint = new IPEndPoint(IPAddress.Broadcast, _port);
-                await _udpClient.SendAsync(packet, packet.Length, endpoint);
-            }
-            catch { }
-        }
-
-        public async Task SendVoiceToEndpoint(byte[] packet, IPEndPoint endpoint)
-        {
-            if (_udpClient == null) return;
-
-            try
-            {
-                await _udpClient.SendAsync(packet, packet.Length, endpoint);
-            }
-            catch { }
-        }
-
-        private async Task ReceiveLoop(CancellationToken ct)
-        {
-            while (!ct.IsCancellationRequested && _isActive)
+            while (!token.IsCancellationRequested)
             {
                 try
                 {
-                    var result = await _udpClient!.ReceiveAsync();
-                    ProcessVoicePacket(result.Buffer);
+                    // Wait for next capture interval
+                    var elapsed = (DateTime.UtcNow - lastCaptureTime).TotalMilliseconds;
+                    var delay = Math.Max(0, CAPTURE_INTERVAL_MS - (int)elapsed);
+                    if (delay > 0)
+                    {
+                        await Task.Delay(delay, token);
+                    }
+                    lastCaptureTime = DateTime.UtcNow;
+
+                    // Note: Plugin.Maui.Audio doesn't support streaming chunks
+                    // We'll use a workaround: stop/start recording in short intervals
+                    // For production, consider using platform-specific audio APIs
+
+                    // This is a simplified approach - you may need platform-specific code
+                    // For now, we'll send silence packets to maintain connection
+                    var silencePacket = new byte[320]; // ~20ms of silence at 16kHz mono
+                    await _udpSender.SendAsync(silencePacket, silencePacket.Length, endpoint);
+
+                    // TODO: Implement proper audio capture with platform-specific code
+                    // See notes at the end of this file
                 }
-                catch when (ct.IsCancellationRequested) { }
-                catch { }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Voice] Capture error: {ex.Message}");
+                    await Task.Delay(100, token);
+                }
             }
         }
 
-        private void ProcessVoicePacket(byte[] packet)
+        private async Task ReceiveLoopAsync(CancellationToken token)
         {
-            if (_decoder == null || _waveProvider == null) return;
-
-            try
+            while (!token.IsCancellationRequested)
             {
-                // Decode with Opus
-                var decoded = new short[FrameSize];
-                var decodedLength = _decoder.Decode(packet, 0, packet.Length, decoded, 0, FrameSize, false);
-
-                if (decodedLength > 0)
+                try
                 {
-                    // Convert shorts to bytes
-                    var bytes = new byte[decodedLength * 2];
-                    Buffer.BlockCopy(decoded, 0, bytes, 0, bytes.Length);
+                    var result = await _udpReceiver.ReceiveAsync();
 
-                    // Add to playback buffer
-                    _waveProvider.AddSamples(bytes, 0, bytes.Length);
+                    if (result.Buffer != null && result.Buffer.Length > 0)
+                    {
+                        // Add to playback queue
+                        _audioQueue.Enqueue(result.Buffer);
+                        _audioQueueSemaphore.Release();
+
+                        Debug.WriteLine($"[Voice] Received {result.Buffer.Length} bytes");
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Voice] Receive error: {ex.Message}");
+                    await Task.Delay(10, token);
                 }
             }
-            catch (Exception ex)
+        }
+
+        private async Task PlaybackLoopAsync(CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
             {
-                System.Diagnostics.Debug.WriteLine($"Audio decode error: {ex.Message}");
+                try
+                {
+                    // Wait for audio data with timeout
+                    var hasData = await _audioQueueSemaphore.WaitAsync(100, token);
+
+                    if (!hasData)
+                        continue;
+
+                    if (_audioQueue.TryDequeue(out var audioData))
+                    {
+                        // Wait until we have enough buffered (jitter buffer)
+                        if (_audioQueue.Count < JITTER_BUFFER_SIZE)
+                        {
+                            await Task.Delay(10, token);
+                            continue;
+                        }
+
+                        // Play audio using Plugin.Maui.Audio
+                        using var stream = new MemoryStream(audioData);
+
+                        // Note: This is simplified - Plugin.Maui.Audio expects full audio files
+                        // For production, you'll need platform-specific implementation
+                        // See notes at the end of this file
+
+                        var player = AudioManager.Current.CreatePlayer(stream);
+                        player.Play();
+
+                        // Wait for playback (approximate)
+                        await Task.Delay(CAPTURE_INTERVAL_MS, token);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Voice] Playback error: {ex.Message}");
+                    await Task.Delay(50, token);
+                }
             }
         }
 
         public void Dispose()
         {
-            _isActive = false;
-            _cts?.Cancel();
-
-            _waveIn?.StopRecording();
-            _waveIn?.Dispose();
-
-            _waveOut?.Stop();
-            _waveOut?.Dispose();
-
-            _udpClient?.Close();
+            EndCallAsync().Wait();
+            _cts?.Dispose();
+            _udpSender?.Dispose();
+            _udpReceiver?.Dispose();
+            _audioQueueSemaphore?.Dispose();
         }
     }
 }
+
+/*
+ * IMPORTANT NOTES FOR PRODUCTION IMPLEMENTATION:
+ * 
+ * Plugin.Maui.Audio is designed for playing complete audio files, not streaming.
+ * For real-time voice calls, you need platform-specific implementations:
+ * 
+ * ANDROID:
+ * - Use AudioRecord for capture
+ * - Use AudioTrack for playback
+ * - Wrap in Android-specific service class
+ * 
+ * iOS:
+ * - Use AVAudioEngine with audio taps
+ * - Or use AVAudioRecorder/AVAudioPlayer with proper buffer management
+ * - Configure audio session for VoIP
+ * 
+ * WINDOWS:
+ * - Use NAudio library (add NAudio package)
+ * - WaveInEvent for capture
+ * - WaveOutEvent for playback
+ * 
+ * RECOMMENDED NEXT STEP:
+ * Create platform-specific implementations in Platforms/ folders:
+ * - Platforms/Android/Services/AndroidVoiceService.cs
+ * - Platforms/iOS/Services/IOSVoiceService.cs  
+ * - Platforms/Windows/Services/WindowsVoiceService.cs
+ * 
+ * Then use dependency injection to resolve the correct implementation:
+ * 
+ * #if ANDROID
+ *     builder.Services.AddSingleton<IVoiceService, AndroidVoiceService>();
+ * #elif IOS
+ *     builder.Services.AddSingleton<IVoiceService, IOSVoiceService>();
+ * #elif WINDOWS
+ *     builder.Services.AddSingleton<IVoiceService, WindowsVoiceService>();
+ * #endif
+ */

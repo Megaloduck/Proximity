@@ -6,12 +6,13 @@ namespace Proximity.Models
 {
     public class ChatMessage
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
-        public string SenderId { get; set; } = string.Empty;
-        public string SenderName { get; set; } = string.Empty;
-        public string Content { get; set; } = string.Empty;
-        public DateTime Timestamp { get; set; } = DateTime.Now;
-        public bool IsPrivate { get; set; }
-        public string? RecipientId { get; set; }
+        public string Type { get; set; } = "text";
+        public string MessageId { get; set; }
+        public string FromDeviceId { get; set; }
+        public string FromDeviceName { get; set; }
+        public string ToDeviceId { get; set; }
+        public string Text { get; set; }
+        public DateTime Timestamp { get; set; }
+        public Dictionary<string, object> Metadata { get; set; }
     }
 }
