@@ -4,12 +4,62 @@
              x:Class="Proximity.Pages.Tools.ContactsPage"
              Title="{Binding PeerName}">
 
-    <Grid RowDefinitions="*,Auto" 
+    <Grid RowDefinitions="Auto,*,Auto" 
           Padding="10"
           RowSpacing="10">
 
-        <!-- Messages List -->
+        <!-- Chat Header with Peer Info -->
         <Border Grid.Row="0"
+                BackgroundColor="{DynamicResource CardBackgroundColor}"
+                Stroke="{DynamicResource PrimaryColor}"
+                StrokeThickness="1"
+                StrokeShape="RoundRectangle 12"
+                Padding="15">
+
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                <!-- Avatar -->
+                <Border Grid.Column="0"
+                        WidthRequest="45"
+                        HeightRequest="45"
+                        StrokeShape="RounddRectangle 22"
+                        BackgroundColor="{DynamicResource PrimaryColor}">
+                    <Label Text="{Binding PeerAvatar, TargetNullValue='👤'}"
+                           FontSize="24"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"/>
+                </Border>
+
+                <!-- Peer Info -->
+                <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                    <Label Text="{Binding PeerName}"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
+                    <HorizontalStackLayout Spacing="8">
+                        <Label Text="{Binding PeerStatus}"
+                               FontSize="12"
+                               TextColor="{DynamicResource SuccessColor}"/>
+                        <Label Text="•" 
+                               FontSize="12"
+                               TextColor="{DynamicResource TertiaryTextColor}"/>
+                        <Label Text="{Binding PeerIpAddress}"
+                               FontSize="12"
+                               TextColor="{DynamicResource TertiaryTextColor}"/>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+
+                <!-- Typing Indicator -->
+                <Label Grid.Column="2"
+                       Text="✍️ typing..."
+                       FontSize="11"
+                       IsVisible="{Binding IsTyping}"
+                       TextColor="{DynamicResource AccentColor}"
+                       VerticalOptions="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Messages List -->
+        <Border Grid.Row="1"
                 BackgroundColor="{DynamicResource CardBackgroundColor}"
                 Stroke="{DynamicResource BorderColor}"
                 StrokeThickness="1">
@@ -18,77 +68,181 @@
             </Border.StrokeShape>
 
             <CollectionView ItemsSource="{Binding Messages}"
-                           EmptyView="No messages yet. Start chatting!">
+                           x:Name="MessagesCollection"
+                           EmptyView="No messages yet. Start chatting!"
+                           Margin="10">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
-                        <Grid Padding="10" ColumnDefinitions="Auto,*" ColumnSpacing="10">
-                            <!-- Sender indicator -->
-                            <BoxView Grid.Column="0"
-                                    WidthRequest="4"
-                                    CornerRadius="2"
-                                    Color="{DynamicResource PrimaryColor}"/>
+                        <Grid Padding="8" ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="{Binding IsSentByMe, Converter={StaticResource BoolToGridLength}}"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="{Binding IsSentByMe, Converter={StaticResource InverseBoolToGridLength}}"/>
+                            </Grid.ColumnDefinitions>
 
-                            <VerticalStackLayout Grid.Column="1" Spacing="5">
-                                <!-- Sender name and timestamp -->
-                                <HorizontalStackLayout Spacing="10">
+                            <!-- Message Bubble -->
+                            <Border Grid.Column="1"
+                                    Padding="12"
+                                    MaximumWidthRequest="300">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="15"/>
+                                </Border.StrokeShape>
+                                <Border.Triggers>
+                                    <!-- Sent by me -->
+                                    <DataTrigger TargetType="Border" 
+                                               Binding="{Binding IsSentByMe}" 
+                                               Value="True">
+                                        <Setter Property="BackgroundColor" Value="{DynamicResource PrimaryColor}"/>
+                                        <Setter Property="HorizontalOptions" Value="End"/>
+                                    </DataTrigger>
+                                    <!-- Received -->
+                                    <DataTrigger TargetType="Border" 
+                                               Binding="{Binding IsSentByMe}" 
+                                               Value="False">
+                                        <Setter Property="BackgroundColor" Value="{DynamicResource SecondaryColor}"/>
+                                        <Setter Property="HorizontalOptions" Value="Start"/>
+                                    </DataTrigger>
+                                </Border.Triggers>
+
+                                <VerticalStackLayout Spacing="5">
+                                    <!-- Sender Name (only for received messages) -->
                                     <Label Text="{Binding SenderName}"
-                                          FontSize="14"
-                                          FontAttributes="Bold"
-                                          TextColor="{DynamicResource PrimaryColor}"/>
+                                           FontSize="12"
+                                           FontAttributes="Bold"
+                                           TextColor="White"
+                                           IsVisible="{Binding IsSentByMe, Converter={StaticResource InvertedBoolConverter}}"/>
 
-                                    <Label Text="{Binding Timestamp, StringFormat='{0:HH:mm:ss}'}"
-                                          FontSize="12"
-                                          TextColor="{DynamicResource TertiaryTextColor}"/>
-                                </HorizontalStackLayout>
+                                    <!-- Message Content -->
+                                    <Label Text="{Binding Content}"
+                                           FontSize="14"
+                                           TextColor="White"/>
 
-                                <!-- Message content -->
-                                <Label Text="{Binding Content}"
-                                      FontSize="14"
-                                      TextColor="{DynamicResource PrimaryTextColor}"/>
-                            </VerticalStackLayout>
+                                    <!-- Timestamp and Status -->
+                                    <HorizontalStackLayout Spacing="6" HorizontalOptions="End">
+                                        <Label Text="{Binding Timestamp, StringFormat='{0:HH:mm}'}"
+                                               FontSize="11"
+                                               TextColor="White"
+                                               Opacity="0.8"/>
+
+                                        <!-- Delivery Status (only for sent messages) -->
+                                        <Label Text="{Binding DeliveryStatus}"
+                                               FontSize="11"
+                                               IsVisible="{Binding IsSentByMe}"
+                                               TextColor="White"
+                                               Opacity="0.8">
+                                            <Label.Triggers>
+                                                <DataTrigger TargetType="Label" 
+                                                           Binding="{Binding IsDelivered}" 
+                                                           Value="True">
+                                                    <Setter Property="Text" Value="✓✓"/>
+                                                </DataTrigger>
+                                                <DataTrigger TargetType="Label" 
+                                                           Binding="{Binding IsDelivered}" 
+                                                           Value="False">
+                                                    <Setter Property="Text" Value="✓"/>
+                                                </DataTrigger>
+                                            </Label.Triggers>
+                                        </Label>
+                                    </HorizontalStackLayout>
+                                </VerticalStackLayout>
+                            </Border>
                         </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
         </Border>
 
-        <!-- Input Section -->
-        <Border Grid.Row="1"
+        <!-- Input Section with Voice -->
+        <Border Grid.Row="2"
                 BackgroundColor="{DynamicResource CardBackgroundColor}"
                 Stroke="{DynamicResource BorderColor}"
                 StrokeThickness="1"
-                Padding="10">
+                Padding="12">
             <Border.StrokeShape>
                 <RoundRectangle CornerRadius="12"/>
             </Border.StrokeShape>
 
-            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
-                <!-- Message input -->
-                <Entry Grid.Column="0"
-                       Text="{Binding MessageText}"
-                       Placeholder="Type a message..."
-                       ReturnCommand="{Binding SendCommand}"/>
+            <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
+                <!-- Voice Call Status Bar (when active) -->
+                <Border Grid.Row="0"
+                        IsVisible="{Binding IsVoiceActive}"
+                        BackgroundColor="{DynamicResource SuccessColor}"
+                        Padding="10"
+                        StrokeShape="RoundRectangle 8">
+                    <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                        <Label Text="🎤"
+                               FontSize="16"
+                               VerticalOptions="Center"/>
+                        <Label Text="Voice Call Active"
+                               FontSize="14"
+                               FontAttributes="Bold"
+                               TextColor="White"
+                               VerticalOptions="Center"/>
+                        <Label Text="{Binding CallDuration}"
+                               FontSize="14"
+                               TextColor="White"
+                               VerticalOptions="Center"/>
+                    </HorizontalStackLayout>
+                </Border>
 
-                <!-- Voice button -->
-                <Button Grid.Column="1"
-                        Text="🎤"
-                        Command="{Binding ToggleVoiceCommand}"
-                        BackgroundColor="{DynamicResource SecondaryColor}"
-                        Padding="15,8">
-                    <Button.Triggers>
-                        <DataTrigger TargetType="Button" 
-                                   Binding="{Binding IsVoiceActive}" 
-                                   Value="True">
-                            <Setter Property="BackgroundColor" Value="{DynamicResource DangerColor}"/>
-                        </DataTrigger>
-                    </Button.Triggers>
-                </Button>
+                <!-- Message Input Row -->
+                <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                    <!-- Message Entry -->
+                    <Border Grid.Column="0"
+                            BackgroundColor="{DynamicResource PageBackgroundColor}"
+                            Stroke="{DynamicResource BorderColor}"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 20">
+                        <Entry Text="{Binding MessageText}"
+                               Placeholder="Type a message..."
+                               PlaceholderColor="{DynamicResource TertiaryTextColor}"
+                               ReturnCommand="{Binding SendCommand}"
+                               Margin="15,0"/>
+                    </Border>
 
-                <!-- Send button -->
-                <Button Grid.Column="2"
-                        Text="Send"
-                        Command="{Binding SendCommand}"
-                        Padding="20,8"/>
+                    <!-- Emoji Button -->
+                    <Button Grid.Column="1"
+                            Text="😊"
+                            Command="{Binding ShowEmojiPickerCommand}"
+                            WidthRequest="45"
+                            HeightRequest="45"
+                            CornerRadius="22"
+                            Padding="0"
+                            FontSize="18"
+                            BackgroundColor="{DynamicResource SecondaryColor}"/>
+
+                    <!-- Voice Button -->
+                    <Button Grid.Column="2"
+                            Text="🎤"
+                            Command="{Binding ToggleVoiceCommand}"
+                            WidthRequest="45"
+                            HeightRequest="45"
+                            CornerRadius="22"
+                            Padding="0"
+                            FontSize="18"
+                            BackgroundColor="{DynamicResource AccentColor}">
+                        <Button.Triggers>
+                            <DataTrigger TargetType="Button" 
+                                       Binding="{Binding IsVoiceActive}" 
+                                       Value="True">
+                                <Setter Property="BackgroundColor" Value="{DynamicResource DangerColor}"/>
+                                <Setter Property="Text" Value="🔴"/>
+                            </DataTrigger>
+                        </Button.Triggers>
+                    </Button>
+
+                    <!-- Send Button -->
+                    <Button Grid.Column="3"
+                            Text="➤"
+                            Command="{Binding SendCommand}"
+                            IsEnabled="{Binding HasMessageText}"
+                            WidthRequest="45"
+                            HeightRequest="45"
+                            CornerRadius="22"
+                            Padding="0"
+                            FontSize="20"
+                            BackgroundColor="{DynamicResource PrimaryColor}"/>
+                </Grid>
             </Grid>
         </Border>
     </Grid>

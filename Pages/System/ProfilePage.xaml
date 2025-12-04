@@ -79,22 +79,40 @@
                                FontSize="14"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
 
-                        <HorizontalStackLayout Spacing="10" >
-                            <Button Text="😀" Command="{Binding SelectEmojiCommand}" CommandParameter="😀" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="😎" Command="{Binding SelectEmojiCommand}" CommandParameter="😎" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="🤖" Command="{Binding SelectEmojiCommand}" CommandParameter="🤖" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="👾" Command="{Binding SelectEmojiCommand}" CommandParameter="👾" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="🚀" Command="{Binding SelectEmojiCommand}" CommandParameter="🚀" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="⚡" Command="{Binding SelectEmojiCommand}" CommandParameter="⚡" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="🔥" Command="{Binding SelectEmojiCommand}" CommandParameter="🔥" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="💎" Command="{Binding SelectEmojiCommand}" CommandParameter="💎" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="🎮" Command="{Binding SelectEmojiCommand}" CommandParameter="🎮" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="🎨" Command="{Binding SelectEmojiCommand}" CommandParameter="🎨" WidthRequest="50" HeightRequest="50"/>
-                        </HorizontalStackLayout>
+                        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*,*,*,*" RowSpacing="8" ColumnSpacing="8">
+                            <Button Grid.Row="0" Grid.Column="0" Text="😀" Command="{Binding SelectEmojiCommand}" CommandParameter="😀" WidthRequest="50" HeightRequest="50"/>
+                            <Button Grid.Row="0" Grid.Column="1" Text="😎" Command="{Binding SelectEmojiCommand}" CommandParameter="😎" WidthRequest="50" HeightRequest="50"/>
+                            <Button Grid.Row="0" Grid.Column="2" Text="🤖" Command="{Binding SelectEmojiCommand}" CommandParameter="🤖" WidthRequest="50" HeightRequest="50"/>
+                            <Button Grid.Row="0" Grid.Column="3" Text="👾" Command="{Binding SelectEmojiCommand}" CommandParameter="👾" WidthRequest="50" HeightRequest="50"/>
+                            <Button Grid.Row="0" Grid.Column="4" Text="🚀" Command="{Binding SelectEmojiCommand}" CommandParameter="🚀" WidthRequest="50" HeightRequest="50"/>
+
+                            <Button Grid.Row="1" Grid.Column="0" Text="⚡" Command="{Binding SelectEmojiCommand}" CommandParameter="⚡" WidthRequest="50" HeightRequest="50"/>
+                            <Button Grid.Row="1" Grid.Column="1" Text="🔥" Command="{Binding SelectEmojiCommand}" CommandParameter="🔥" WidthRequest="50" HeightRequest="50"/>
+                            <Button Grid.Row="1" Grid.Column="2" Text="💎" Command="{Binding SelectEmojiCommand}" CommandParameter="💎" WidthRequest="50" HeightRequest="50"/>
+                            <Button Grid.Row="1" Grid.Column="3" Text="🎮" Command="{Binding SelectEmojiCommand}" CommandParameter="🎮" WidthRequest="50" HeightRequest="50"/>
+                            <Button Grid.Row="1" Grid.Column="4" Text="🎨" Command="{Binding SelectEmojiCommand}" CommandParameter="🎨" WidthRequest="50" HeightRequest="50"/>
+                        </Grid>
+
+                        <Label Text="{Binding SelectedEmoji, StringFormat='Selected: {0}'}"
+                               FontSize="12"
+                               TextColor="{DynamicResource AccentColor}"
+                               Margin="0,5,0,0"/>
                     </VerticalStackLayout>
 
+                    <!-- Save Status Message -->
+                    <Border Padding="10"
+                           BackgroundColor="{DynamicResource SuccessColor}"
+                           StrokeShape="RoundRectangle 6"
+                           IsVisible="{Binding ShowSaveSuccess}"
+                           Margin="0,5,0,0">
+                        <Label Text="✓ Profile saved successfully!"
+                               FontSize="13"
+                               TextColor="White"
+                               HorizontalOptions="Center"/>
+                    </Border>
+
                     <!-- Save Button -->
-                    <Button Text="Save Profile"
+                    <Button Text="💾 Save Profile"
                             Command="{Binding SaveProfileCommand}"
                             Margin="0,10,0,0"
                             HorizontalOptions="Fill"/>
@@ -166,34 +184,49 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- User ID Info -->
+            <!-- Device Information Card -->
             <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
                     Stroke="{DynamicResource BorderColor}"
                     StrokeThickness="1"
                     Padding="20"
                     StrokeShape="RoundRectangle 12">
 
-                <VerticalStackLayout Spacing="10">
-                    <Label Text="Your Information"
+                <VerticalStackLayout Spacing="15">
+                    <Label Text="Device Information"
                            FontSize="18"
                            FontAttributes="Bold"
                            TextColor="{DynamicResource PrimaryTextColor}"/>
 
-                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto"
-                          RowSpacing="8" ColumnSpacing="10">
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto"
+                          RowSpacing="10" ColumnSpacing="12">
+
                         <Label Grid.Row="0" Grid.Column="0" 
-                               Text="User ID:"
+                               Text="📱 Device:"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
                         <Label Grid.Row="0" Grid.Column="1" 
-                               Text="{Binding LocalPeerId}"
+                               Text="{Binding DeviceModel}"
                                TextColor="{DynamicResource PrimaryTextColor}"/>
 
                         <Label Grid.Row="1" Grid.Column="0" 
-                               Text="Account Created:"
+                               Text="🆔 User ID:"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
                         <Label Grid.Row="1" Grid.Column="1" 
+                               Text="{Binding LocalPeerId}"
+                               TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                        <Label Grid.Row="2" Grid.Column="0" 
+                               Text="📅 Created:"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                        <Label Grid.Row="2" Grid.Column="1" 
                                Text="{Binding AccountCreated}"
                                TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                        <Label Grid.Row="3" Grid.Column="0" 
+                               Text="🌐 Network:"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                        <Label Grid.Row="3" Grid.Column="1" 
+                               Text="{Binding NetworkStatus}"
+                               TextColor="{DynamicResource SuccessColor}"/>
                     </Grid>
                 </VerticalStackLayout>
             </Border>

@@ -2,28 +2,342 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Proximity.Pages.Tools.AuditoriumPage"
-           Title="Auditorium">
+             Title="Auditorium">
 
-    <VerticalStackLayout Padding="40" Spacing="20" VerticalOptions="Center">
-        <Label Text="🎤"
-               FontSize="64"
-               HorizontalOptions="Center"/>
+    <Grid RowDefinitions="Auto,*,Auto" Padding="20" RowSpacing="15">
 
-        <Label Text="Voice Auditorium"
-               FontSize="28"
-               FontAttributes="Bold"
-               HorizontalOptions="Center"
-               TextColor="{DynamicResource PrimaryTextColor}"/>
+        <!-- Header -->
+        <Border Grid.Row="0"
+                BackgroundColor="{DynamicResource CardBackgroundColor}"
+                Stroke="{DynamicResource SuccessColor}"
+                StrokeThickness="2"
+                Padding="20"
+                StrokeShape="RoundRectangle 12">
 
-        <Label Text="Multi-user voice rooms with audio mixing"
-               FontSize="16"
-               HorizontalOptions="Center"
-               TextColor="{DynamicResource SecondaryTextColor}"/>
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="15">
+                <Label Grid.Column="0"
+                       Text="🎤"
+                       FontSize="48"
+                       VerticalOptions="Center"/>
 
-        <Label Text="Coming Soon in v1.3"
-               FontSize="14"
-               HorizontalOptions="Center"
-               Margin="0,20,0,0"
-               TextColor="{DynamicResource AccentColor}"/>
-    </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="1" Spacing="5">
+                    <Label Text="Voice Auditorium"
+                           FontSize="22"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
+                    <Label Text="Screen sharing, voice broadcast, and collaborative spaces"
+                           FontSize="13"
+                           TextColor="{DynamicResource SecondaryTextColor}"/>
+                </VerticalStackLayout>
+
+                <!-- Active Session Indicator -->
+                <Border Grid.Column="2"
+                       Padding="12,8"
+                       BackgroundColor="{DynamicResource SuccessColor}"
+                       StrokeShape="RoundRectangle 8"
+                       IsVisible="{Binding IsSessionActive}"
+                       VerticalOptions="Center">
+                    <Label Text="🔴 LIVE"
+                           FontSize="12"
+                           FontAttributes="Bold"
+                           TextColor="White"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1" RowDefinitions="2*,*" RowSpacing="15">
+
+            <!-- Stage/Screen Share Area -->
+            <Border Grid.Row="0"
+                    BackgroundColor="{DynamicResource CardBackgroundColor}"
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 12">
+
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <!-- Stage Header -->
+                    <Grid Grid.Row="0" 
+                          Padding="15"
+                          ColumnDefinitions="*,Auto,Auto">
+                        <Label Grid.Column="0"
+                               Text="Main Stage"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               TextColor="{DynamicResource PrimaryTextColor}"
+                               VerticalOptions="Center"/>
+
+                        <Button Grid.Column="1"
+                                Text="📺 Share Screen"
+                                Command="{Binding StartScreenShareCommand}"
+                                IsVisible="{Binding IsScreenSharing, Converter={StaticResource InvertedBoolConverter}}"
+                                Padding="12,6"
+                                FontSize="12"
+                                Margin="0,0,8,0"/>
+
+                        <Button Grid.Column="2"
+                                Text="🛑 Stop Sharing"
+                                Command="{Binding StopScreenShareCommand}"
+                                IsVisible="{Binding IsScreenSharing}"
+                                BackgroundColor="{DynamicResource DangerColor}"
+                                Padding="12,6"
+                                FontSize="12"/>
+                    </Grid>
+
+                    <!-- Screen Share Display / Placeholder -->
+                    <Border Grid.Row="1" 
+                            Margin="15"
+                            BackgroundColor="{DynamicResource PageBackgroundColor}"
+                            Stroke="{DynamicResource BorderColor}"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 8">
+
+                        <!-- Placeholder when no screen share -->
+                        <VerticalStackLayout Spacing="15"
+                                            IsVisible="{Binding HasActivePresentation, Converter={StaticResource InvertedBoolConverter}}"
+                                            VerticalOptions="Center"
+                                            HorizontalOptions="Center">
+                            <Label Text="📺"
+                                   FontSize="64"
+                                   HorizontalOptions="Center"/>
+                            <Label Text="No active presentation"
+                                   FontSize="16"
+                                   TextColor="{DynamicResource SecondaryTextColor}"
+                                   HorizontalOptions="Center"/>
+                            <Label Text="Click 'Share Screen' to start broadcasting"
+                                   FontSize="13"
+                                   TextColor="{DynamicResource TertiaryTextColor}"
+                                   HorizontalOptions="Center"/>
+                        </VerticalStackLayout>
+
+                        <!-- Active Screen Share Display -->
+                        <Grid IsVisible="{Binding HasActivePresentation}"
+                              Padding="15">
+                            <Image Source="{Binding ScreenSharePreview}"
+                                   Aspect="AspectFit"/>
+
+                            <!-- Presenter Info Overlay -->
+                            <Border Padding="10"
+                                   BackgroundColor="#CC000000"
+                                   StrokeShape="RoundRectangle 6"
+                                   VerticalOptions="Start"
+                                   HorizontalOptions="Start"
+                                   Margin="10">
+                                <HorizontalStackLayout Spacing="8">
+                                    <Label Text="{Binding PresenterAvatar}"
+                                           FontSize="20"/>
+                                    <VerticalStackLayout Spacing="2">
+                                        <Label Text="{Binding PresenterName}"
+                                               FontSize="13"
+                                               FontAttributes="Bold"
+                                               TextColor="White"/>
+                                        <Label Text="Presenting"
+                                               FontSize="11"
+                                               TextColor="White"/>
+                                    </VerticalStackLayout>
+                                </HorizontalStackLayout>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- Stage Controls -->
+                    <Grid Grid.Row="2" 
+                          Padding="15"
+                          ColumnDefinitions="*,Auto,Auto,Auto"
+                          ColumnSpacing="8">
+                        <Label Grid.Column="0"
+                               Text="{Binding ViewerCount, StringFormat='👥 {0} viewers'}"
+                               FontSize="13"
+                               TextColor="{DynamicResource SecondaryTextColor}"
+                               VerticalOptions="Center"/>
+
+                        <Button Grid.Column="1"
+                                Text="💬"
+                                Command="{Binding ToggleChatCommand}"
+                                WidthRequest="40"
+                                HeightRequest="40"
+                                CornerRadius="20"
+                                Padding="0"
+                                FontSize="18"/>
+
+                        <Button Grid.Column="2"
+                                Text="🎤"
+                                Command="{Binding ToggleMicCommand}"
+                                WidthRequest="40"
+                                HeightRequest="40"
+                                CornerRadius="20"
+                                Padding="0"
+                                FontSize="18">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" 
+                                           Binding="{Binding IsMicMuted}" 
+                                           Value="True">
+                                    <Setter Property="BackgroundColor" Value="{DynamicResource DangerColor}"/>
+                                    <Setter Property="Text" Value="🔇"/>
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+
+                        <Button Grid.Column="3"
+                                Text="📢"
+                                Command="{Binding ToggleSpeakerCommand}"
+                                WidthRequest="40"
+                                HeightRequest="40"
+                                CornerRadius="20"
+                                Padding="0"
+                                FontSize="18">
+                            <Button.Triggers>
+                                <DataTrigger TargetType="Button" 
+                                           Binding="{Binding IsSpeakerMuted}" 
+                                           Value="True">
+                                    <Setter Property="BackgroundColor" Value="{DynamicResource DangerColor}"/>
+                                    <Setter Property="Text" Value="🔇"/>
+                                </DataTrigger>
+                            </Button.Triggers>
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Participants Panel -->
+            <Border Grid.Row="1"
+                    BackgroundColor="{DynamicResource CardBackgroundColor}"
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 12">
+
+                <Grid RowDefinitions="Auto,*">
+                    <!-- Participants Header -->
+                    <Grid Grid.Row="0" 
+                          Padding="15"
+                          ColumnDefinitions="*,Auto">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="Participants"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+                            <Label Text="{Binding ParticipantCount, StringFormat='{0} in auditorium'}"
+                                   FontSize="12"
+                                   TextColor="{DynamicResource SecondaryTextColor}"/>
+                        </VerticalStackLayout>
+
+                        <Button Grid.Column="1"
+                                Text="🚪 Leave"
+                                Command="{Binding LeaveAuditoriumCommand}"
+                                BackgroundColor="{DynamicResource DangerColor}"
+                                Padding="12,6"
+                                FontSize="12"
+                                VerticalOptions="Center"/>
+                    </Grid>
+
+                    <!-- Participants List -->
+                    <CollectionView Grid.Row="1"
+                                   ItemsSource="{Binding Participants}"
+                                   EmptyView="No participants yet"
+                                   Margin="10">
+                        <CollectionView.ItemsLayout>
+                            <GridItemsLayout Orientation="Vertical" Span="3" />
+                        </CollectionView.ItemsLayout>
+
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="5"
+                                       Padding="10"
+                                       BackgroundColor="{DynamicResource PageBackgroundColor}"
+                                       Stroke="{DynamicResource BorderColor}"
+                                       StrokeThickness="1"
+                                       StrokeShape="RoundRectangle 8">
+                                    <Border.Triggers>
+                                        <DataTrigger TargetType="Border" 
+                                                   Binding="{Binding IsSpeaking}" 
+                                                   Value="True">
+                                            <Setter Property="Stroke" Value="{DynamicResource SuccessColor}"/>
+                                            <Setter Property="StrokeThickness" Value="2"/>
+                                        </DataTrigger>
+                                    </Border.Triggers>
+
+                                    <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
+                                        <!-- Avatar -->
+                                        <Border WidthRequest="50"
+                                               HeightRequest="50"
+                                               StrokeShape="RounddRectangle 25"
+                                               BackgroundColor="{DynamicResource PrimaryColor}">
+                                            <Label Text="{Binding Avatar}"
+                                                   FontSize="28"
+                                                   HorizontalOptions="Center"
+                                                   VerticalOptions="Center"/>
+                                        </Border>
+
+                                        <!-- Name -->
+                                        <Label Text="{Binding Name}"
+                                               FontSize="12"
+                                               HorizontalOptions="Center"
+                                               LineBreakMode="TailTruncation"
+                                               MaxLines="1"
+                                               TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                                        <!-- Status Icons -->
+                                        <HorizontalStackLayout Spacing="5" HorizontalOptions="Center">
+                                            <Label Text="🎤"
+                                                   FontSize="12"
+                                                   IsVisible="{Binding IsMicOn}"/>
+                                            <Label Text="🔇"
+                                                   FontSize="12"
+                                                   IsVisible="{Binding IsMicOn, Converter={StaticResource InvertedBoolConverter}}"/>
+                                            <Label Text="👑"
+                                                   FontSize="12"
+                                                   IsVisible="{Binding IsPresenter}"/>
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Session Controls Footer -->
+        <Border Grid.Row="2"
+                BackgroundColor="{DynamicResource CardBackgroundColor}"
+                Stroke="{DynamicResource BorderColor}"
+                StrokeThickness="1"
+                Padding="15"
+                StrokeShape="RoundRectangle 12">
+
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
+                <!-- Session Info -->
+                <VerticalStackLayout Spacing="3">
+                    <Label Text="{Binding SessionName, TargetNullValue='No Active Session'}"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
+                    <Label Text="{Binding SessionDuration}"
+                           FontSize="12"
+                           TextColor="{DynamicResource SecondaryTextColor}"/>
+                </VerticalStackLayout>
+
+                <!-- Create/Join Session -->
+                <Button Grid.Column="1"
+                        Text="➕ Create Session"
+                        Command="{Binding CreateSessionCommand}"
+                        IsVisible="{Binding IsSessionActive, Converter={StaticResource InvertedBoolConverter}}"
+                        Padding="15,8"/>
+
+                <Button Grid.Column="2"
+                        Text="🚪 Join Session"
+                        Command="{Binding JoinSessionCommand}"
+                        IsVisible="{Binding IsSessionActive, Converter={StaticResource InvertedBoolConverter}}"
+                        Padding="15,8"/>
+
+                <!-- End Session -->
+                <Button Grid.Column="3"
+                        Text="❌ End Session"
+                        Command="{Binding EndSessionCommand}"
+                        IsVisible="{Binding IsSessionActive}"
+                        BackgroundColor="{DynamicResource DangerColor}"
+                        Padding="15,8"/>
+            </Grid>
+        </Border>
+    </Grid>
 </ContentPage>

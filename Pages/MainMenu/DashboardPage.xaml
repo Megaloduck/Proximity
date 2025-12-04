@@ -7,7 +7,7 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
 
-            <!-- Welcome Section -->
+            <!-- Welcome Section with Connection Status -->
             <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
                     Stroke="{DynamicResource BorderColor}"
                     StrokeThickness="1"
@@ -16,16 +16,44 @@
                     <RoundRectangle CornerRadius="12"/>
                 </Border.StrokeShape>
 
-                <VerticalStackLayout Spacing="10">
-                    <Label Text="Welcome to Proximity"
-                           FontSize="24"
-                           FontAttributes="Bold"
-                           TextColor="{DynamicResource PrimaryTextColor}"/>                
+                <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
+                    <HorizontalStackLayout Grid.Row="0" Spacing="10">
+                        <Label Text="Welcome to Proximity"
+                               FontSize="24"
+                               FontAttributes="Bold"
+                               TextColor="{DynamicResource PrimaryTextColor}"/>
 
-                    <Label Text="{Binding WelcomeMessage}"
+                        <!-- Live Connection Indicator -->
+                        <Border WidthRequest="12" HeightRequest="12" 
+                                StrokeShape="RounddRectangle 6"
+                                BackgroundColor="{DynamicResource SuccessColor}"
+                                VerticalOptions="Center">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" 
+                                           Binding="{Binding IsConnected}" 
+                                           Value="False">
+                                    <Setter Property="BackgroundColor" Value="{DynamicResource DangerColor}"/>
+                                </DataTrigger>
+                            </Border.Triggers>
+                        </Border>
+                    </HorizontalStackLayout>
+
+                    <Label Grid.Row="1"
+                           Text="{Binding WelcomeMessage}"
                            FontSize="16"
                            TextColor="{DynamicResource SecondaryTextColor}"/>
-                </VerticalStackLayout>
+
+                    <!-- Quick Status Bar -->
+                    <HorizontalStackLayout Grid.Row="2" Spacing="15" Margin="0,10,0,0">
+                        <Label Text="{Binding ConnectionStatus}"
+                               FontSize="13"
+                               TextColor="{DynamicResource SuccessColor}"/>
+                        <Label Text="•" TextColor="{DynamicResource TertiaryTextColor}"/>
+                        <Label Text="{Binding LastActivityTime}"
+                               FontSize="13"
+                               TextColor="{DynamicResource TertiaryTextColor}"/>
+                    </HorizontalStackLayout>
+                </Grid>
             </Border>
 
             <!-- Statistics Grid -->
@@ -34,7 +62,7 @@
                   ColumnSpacing="15"
                   RowSpacing="15">
 
-                <!-- Connected Peers -->
+                <!-- Connected Peers with Animation Pulse -->
                 <Border Grid.Row="0" Grid.Column="0"
                         BackgroundColor="{DynamicResource CardBackgroundColor}"
                         Stroke="{DynamicResource PrimaryColor}"
@@ -43,6 +71,9 @@
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="12"/>
                     </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToDiscoverCommand}"/>
+                    </Border.GestureRecognizers>
 
                     <VerticalStackLayout Spacing="8">
                         <Label Text="👥"
@@ -57,6 +88,10 @@
                                FontSize="14"
                                HorizontalOptions="Center"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
+                        <Label Text="Tap to manage"
+                               FontSize="11"
+                               HorizontalOptions="Center"
+                               TextColor="{DynamicResource TertiaryTextColor}"/>
                     </VerticalStackLayout>
                 </Border>
 
@@ -69,6 +104,9 @@
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="12"/>
                     </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToDiscoverCommand}"/>
+                    </Border.GestureRecognizers>
 
                     <VerticalStackLayout Spacing="8">
                         <Label Text="🔍"
@@ -83,6 +121,10 @@
                                FontSize="14"
                                HorizontalOptions="Center"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
+                        <Label Text="Tap to view"
+                               FontSize="11"
+                               HorizontalOptions="Center"
+                               TextColor="{DynamicResource TertiaryTextColor}"/>
                     </VerticalStackLayout>
                 </Border>
 
@@ -95,6 +137,9 @@
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="12"/>
                     </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToContactsCommand}"/>
+                    </Border.GestureRecognizers>
 
                     <VerticalStackLayout Spacing="8">
                         <Label Text="💬"
@@ -109,6 +154,10 @@
                                FontSize="14"
                                HorizontalOptions="Center"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
+                        <Label Text="Tap to chat"
+                               FontSize="11"
+                               HorizontalOptions="Center"
+                               TextColor="{DynamicResource TertiaryTextColor}"/>
                     </VerticalStackLayout>
                 </Border>
 
@@ -139,6 +188,45 @@
                 </Border>
             </Grid>
 
+            <!-- Recent Activity Feed -->
+            <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1"
+                    Padding="20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12"/>
+                </Border.StrokeShape>
+
+                <VerticalStackLayout Spacing="15">
+                    <Label Text="Recent Activity"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                    <CollectionView ItemsSource="{Binding RecentActivities}"
+                                   EmptyView="No recent activity"
+                                   HeightRequest="200">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Padding="8" ColumnSpacing="12" ColumnDefinitions="Auto,*,Auto">
+                                    <Label Grid.Column="0"
+                                           Text="{Binding Icon}"
+                                           FontSize="20"/>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                        <Label Text="{Binding Message}"
+                                               FontSize="13"
+                                               TextColor="{DynamicResource PrimaryTextColor}"/>
+                                        <Label Text="{Binding TimeAgo}"
+                                               FontSize="11"
+                                               TextColor="{DynamicResource TertiaryTextColor}"/>
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
             <!-- Quick Actions -->
             <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
                     Stroke="{DynamicResource BorderColor}"
@@ -154,17 +242,23 @@
                            FontAttributes="Bold"
                            TextColor="{DynamicResource PrimaryTextColor}"/>
 
-                    <Button Text="🔍 Discover Peers"
-                            Command="{Binding NavigateToDiscoverCommand}"
-                            HorizontalOptions="Fill"/>
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="10">
+                        <Button Grid.Row="0" Grid.Column="0"
+                                Text="🔍 Discover"
+                                Command="{Binding NavigateToDiscoverCommand}"/>
 
-                    <Button Text="💬 Open Chat"
-                            Command="{Binding NavigateToContactsCommand}"
-                            HorizontalOptions="Fill"/>
+                        <Button Grid.Row="0" Grid.Column="1"
+                                Text="💬 Chat"
+                                Command="{Binding NavigateToContactsCommand}"/>
 
-                    <Button Text="🔄 Refresh Statistics"
-                            Command="{Binding RefreshCommand}"
-                            HorizontalOptions="Fill"/>
+                        <Button Grid.Row="1" Grid.Column="0"
+                                Text="🏠 Rooms"
+                                Command="{Binding NavigateToRoomsCommand}"/>
+
+                        <Button Grid.Row="1" Grid.Column="1"
+                                Text="🔄 Refresh"
+                                Command="{Binding RefreshCommand}"/>
+                    </Grid>
                 </VerticalStackLayout>
             </Border>
 
@@ -184,10 +278,9 @@
                            TextColor="{DynamicResource PrimaryTextColor}"/>
 
                     <Grid ColumnSpacing="10" RowSpacing="8"
-                          ColumnDefinitions="Auto,Auto"
-                          RowDefinitions="Auto,Auto,Auto">
+                          ColumnDefinitions="Auto,*"
+                          RowDefinitions="Auto,Auto,Auto,Auto">
 
-                        <!-- ROW 0 -->
                         <Label Grid.Row="0" Grid.Column="0"
                                Text="Your ID:"
                                TextColor="{DynamicResource SecondaryTextColor}" />
@@ -195,7 +288,6 @@
                                Text="{Binding LocalPeerId}"
                                TextColor="{DynamicResource PrimaryTextColor}" />
 
-                        <!-- ROW 1 -->
                         <Label Grid.Row="1" Grid.Column="0"
                                Text="Username:"
                                TextColor="{DynamicResource SecondaryTextColor}" />
@@ -203,16 +295,20 @@
                                Text="{Binding Username}"
                                TextColor="{DynamicResource PrimaryTextColor}" />
 
-                        <!-- ROW 2 -->
                         <Label Grid.Row="2" Grid.Column="0"
                                Text="Status:"
                                TextColor="{DynamicResource SecondaryTextColor}" />
-
                         <Label Grid.Row="2" Grid.Column="1"
                                Text="{Binding ConnectionStatus}"
                                TextColor="{DynamicResource SuccessColor}" />
-                    </Grid>
 
+                        <Label Grid.Row="3" Grid.Column="0"
+                               Text="Uptime:"
+                               TextColor="{DynamicResource SecondaryTextColor}" />
+                        <Label Grid.Row="3" Grid.Column="1"
+                               Text="{Binding Uptime}"
+                               TextColor="{DynamicResource PrimaryTextColor}" />
+                    </Grid>
                 </VerticalStackLayout>
             </Border>
 
