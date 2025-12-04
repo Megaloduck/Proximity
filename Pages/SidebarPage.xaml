@@ -113,7 +113,7 @@
                                 </Border>
                                 <VerticalStackLayout Spacing="0" VerticalOptions="Center">
                                     <Label Text="Contacts" Style="{StaticResource SidebarItemText}"/>
-                                    <Label Text="Revenue overview   " FontSize="10" TextColor="{DynamicResource SecondaryTextColor}"/>
+                                    <Label Text="Direct messaging" FontSize="10" TextColor="{DynamicResource SecondaryTextColor}"/>
                                 </VerticalStackLayout>
                             </HorizontalStackLayout>
                         </Border>
@@ -128,10 +128,28 @@
                                 </Border>
                                 <VerticalStackLayout Spacing="0" VerticalOptions="Center">
                                     <Label Text="Rooms" Style="{StaticResource SidebarItemText}"/>
-                                    <Label Text="Potential Customers" FontSize="10" TextColor="{DynamicResource SecondaryTextColor}"/>
+                                    <Label Text="Group channels" FontSize="10" TextColor="{DynamicResource SecondaryTextColor}"/>
                                 </VerticalStackLayout>
                             </HorizontalStackLayout>
                         </Border>
+
+  
+
+                        <Border Style="{StaticResource SidebarItemStyle}">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding NavigateToBroadcastsCommand}"/>
+                            </Border.GestureRecognizers>
+                            <HorizontalStackLayout Spacing="12" Padding="12,12">
+                                <Border Style="{StaticResource SidebarLayout}">
+                                    <Label Text="📢" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center"/>
+                                </Border>
+                                <VerticalStackLayout Spacing="0" VerticalOptions="Center">
+                                    <Label Text="Broadcasts" Style="{StaticResource SidebarItemText}"/>
+                                    <Label Text="Unicast to everyone" FontSize="10" TextColor="{DynamicResource SecondaryTextColor}"/>
+                                </VerticalStackLayout>
+                            </HorizontalStackLayout>
+                        </Border>                   
+                        
 
                         <Border Style="{StaticResource SidebarItemStyle}">
                             <Border.GestureRecognizers>
@@ -143,7 +161,7 @@
                                 </Border>
                                 <VerticalStackLayout Spacing="0" VerticalOptions="Center">
                                     <Label Text="Auditorium" Style="{StaticResource SidebarItemText}"/>
-                                    <Label Text="Product Costs" FontSize="10" TextColor="{DynamicResource SecondaryTextColor}"/>
+                                    <Label Text="Performance spaces" FontSize="10" TextColor="{DynamicResource SecondaryTextColor}"/>
                                 </VerticalStackLayout>
                             </HorizontalStackLayout>
                         </Border>

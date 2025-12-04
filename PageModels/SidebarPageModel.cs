@@ -58,6 +58,7 @@ namespace Proximity.PageModels
         public ICommand NavigateToContactsCommand { get; private set; }
         public ICommand NavigateToRoomsCommand { get; private set; }
         public ICommand NavigateToAuditoriumCommand { get; private set; }
+        public ICommand NavigateToBroadcastsCommand { get; private set; }
 
         public ICommand NavigateToProfileCommand { get; private set; }
         public ICommand NavigateToSettingsCommand { get; private set; }
@@ -121,6 +122,7 @@ namespace Proximity.PageModels
 
             NavigateToRoomsCommand = new Command(() => NavigateAction?.Invoke(new RoomsPage()));
             NavigateToAuditoriumCommand = new Command(() => NavigateAction?.Invoke(new AuditoriumPage()));
+            NavigateToBroadcastsCommand = new Command(() => NavigateAction?.Invoke(new BroadcastsPage()));
 
             // System
             NavigateToProfileCommand = new Command(() =>
