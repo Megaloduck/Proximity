@@ -1,127 +1,218 @@
-﻿using System;
+﻿using Proximity.Models;
+using Proximity.Services;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using Microsoft.Maui.Controls;
-using Proximity.Services;
 
-namespace Proximity.PageModels
+namespace Proximity.PageModels;
+
+public class DashboardPageModel : INotifyPropertyChanged
 {
-    public class DashboardPageModel : INotifyPropertyChanged
+    private readonly DiscoveryService _discoveryService;
+    private readonly ChatService _chatService;
+    private readonly VoiceService _voiceService;
+    private System.Timers.Timer _refreshTimer; // Changed from readonly to allow assignment
+    private readonly ObservableCollection<ActivityInfo> _recentActivities = new();
+
+    private string _welcomeMessage;
+    private int _connectedPeersCount;
+    private int _discoveredPeersCount;
+    private int _messagesSentCount;
+    private string _voiceStatus;
+    private string _localPeerId;
+    private string _username;
+    private string _connectionStatus;
+    private bool _isConnected;
+    private string _lastActivityTime;
+    private string _uptime;
+    private DateTime _startTime;
+
+    public DashboardPageModel(DiscoveryService discoveryService, ChatService chatService, VoiceService voiceService)
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        _discoveryService = discoveryService;
+        _chatService = chatService;
+        _voiceService = voiceService;
+        _startTime = DateTime.Now;
 
-        private readonly DiscoveryService _discoveryService;
-        private readonly ChatService _chatService;
-        private readonly VoiceService _voiceService;
+        InitializeCommands();
+        LoadData();
+        StartAutoRefresh();
 
-        // Welcome
-        private string _welcomeMessage = "Stay connected with your local network";
-        public string WelcomeMessage
+        // Subscribe to service events
+        _discoveryService.PeerDiscovered += OnPeerDiscovered;
+        _chatService.MessageSent += OnMessageSent;
+    }
+
+    private void InitializeCommands()
+    {
+        NavigateToDashboardCommand = new Command(async () => { });
+        NavigateToDiscoverCommand = new Command(async () => { });
+        NavigateToContactsCommand = new Command(async () => { });
+        NavigateToRoomsCommand = new Command(async () => { });
+        RefreshCommand = new Command(LoadData);
+    }
+
+    private void LoadData()
+    {
+        Username = _discoveryService.LocalName;
+        LocalPeerId = _discoveryService.LocalPeerId;
+        WelcomeMessage = $"Hello, {Username}! Your network is ready.";
+
+        ConnectedPeersCount = _discoveryService.DiscoveredPeers.Count(p => p.IsConnected);
+        DiscoveredPeersCount = _discoveryService.DiscoveredPeers.Count;
+        MessagesSentCount = _chatService.GetTotalMessagesSent();
+
+        VoiceStatus = _voiceService.IsListening ? "Active" : "Inactive";
+        ConnectionStatus = _discoveryService.IsRunning ? "🟢 Online" : "🔴 Offline";
+        IsConnected = _discoveryService.IsRunning;
+
+        LastActivityTime = "Last activity: " + DateTime.Now.ToString("HH:mm:ss");
+        UpdateUptime();
+    }
+
+    private void StartAutoRefresh()
+    {
+        _refreshTimer = new System.Timers.Timer(5000); // Refresh every 5 seconds
+        _refreshTimer.Elapsed += (s, e) =>
         {
-            get => _welcomeMessage;
-            set { _welcomeMessage = value; OnPropertyChanged(); }
-        }
-
-        // Statistics
-        public int ConnectedPeersCount => _discoveryService?.DiscoveredPeers?.Count(p => p.IsOnline) ?? 0;
-        public int DiscoveredPeersCount => _discoveryService?.DiscoveredPeers?.Count ?? 0;
-
-        private int _messagesSentCount = 0;
-        public int MessagesSentCount
-        {
-            get => _messagesSentCount;
-            set { _messagesSentCount = value; OnPropertyChanged(); }
-        }
-
-        public string VoiceStatus => _voiceService?.IsInCall == true ? "In Call" : "Ready";
-
-        // Network Info
-        public string LocalPeerId => _discoveryService?.MyDeviceId ?? "Not Set";
-        public string Username => _discoveryService?.MyDeviceName ?? "Guest";
-        public string ConnectionStatus => "Online";
-
-        // Commands
-        public ICommand NavigateToDiscoverCommand { get; }
-        public ICommand NavigateToContactsCommand { get; }
-        public ICommand RefreshCommand { get; }
-
-        public DashboardPageModel(DiscoveryService discoveryService, ChatService chatService, VoiceService voiceService)
-        {
-            _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
-            _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
-            _voiceService = voiceService ?? throw new ArgumentNullException(nameof(voiceService));
-
-            // Subscribe to events
-            if (_discoveryService.DiscoveredPeers != null)
+            MainThread.BeginInvokeOnMainThread(() =>
             {
-                _discoveryService.DiscoveredPeers.CollectionChanged += (s, e) =>
-                {
-                    OnPropertyChanged(nameof(ConnectedPeersCount));
-                    OnPropertyChanged(nameof(DiscoveredPeersCount));
-                };
+                LoadData();
+            });
+        };
+        _refreshTimer.Start();
+    }
+
+    private void UpdateUptime()
+    {
+        var uptime = DateTime.Now - _startTime;
+        Uptime = $"{uptime.Hours:D2}:{uptime.Minutes:D2}:{uptime.Seconds:D2}";
+    }
+
+    private void OnPeerDiscovered(object sender, Models.PeerInfo peer)
+    {
+        AddActivity("🔍", $"Discovered {peer.Name}", DateTime.Now);
+        LoadData();
+    }
+
+    private void OnMessageSent(object sender, Models.ChatMessage message)
+    {
+        AddActivity("💬", $"Message sent to {message.ReceiverName}", DateTime.Now);
+        LoadData();
+    }
+
+    private void AddActivity(string icon, string message, DateTime timestamp)
+    {
+        var activity = new ActivityInfo
+        {
+            Icon = icon,
+            Message = message,
+            Timestamp = timestamp,
+            TimeAgo = GetTimeAgo(timestamp)
+        };
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            _recentActivities.Insert(0, activity);
+            if (_recentActivities.Count > 10)
+            {
+                _recentActivities.RemoveAt(_recentActivities.Count - 1);
             }
+        });
+    }
 
-            _chatService.OnMessageReceived += (msg) =>
-            {
-                MessagesSentCount++;
-            };
+    private string GetTimeAgo(DateTime timestamp)
+    {
+        var span = DateTime.Now - timestamp;
+        if (span.TotalSeconds < 60)
+            return "just now";
+        if (span.TotalMinutes < 60)
+            return $"{(int)span.TotalMinutes}m ago";
+        if (span.TotalHours < 24)
+            return $"{(int)span.TotalHours}h ago";
+        return $"{(int)span.TotalDays}d ago";
+    }
 
-            _voiceService.OnCallStarted += () => OnPropertyChanged(nameof(VoiceStatus));
-            _voiceService.OnCallEnded += () => OnPropertyChanged(nameof(VoiceStatus));
+    // Properties
+    public string WelcomeMessage
+    {
+        get => _welcomeMessage;
+        set { _welcomeMessage = value; OnPropertyChanged(); }
+    }
 
-            // Initialize commands
-            NavigateToDiscoverCommand = new Command(async () => await NavigateToDiscoverAsync());
-            NavigateToContactsCommand = new Command(async () => await NavigateToContactsAsync());
-            RefreshCommand = new Command(() => RefreshStatistics());
+    public int ConnectedPeersCount
+    {
+        get => _connectedPeersCount;
+        set { _connectedPeersCount = value; OnPropertyChanged(); }
+    }
 
-            // Set personalized welcome message
-            UpdateWelcomeMessage();
-        }
+    public int DiscoveredPeersCount
+    {
+        get => _discoveredPeersCount;
+        set { _discoveredPeersCount = value; OnPropertyChanged(); }
+    }
 
-        private void UpdateWelcomeMessage()
-        {
-            var hour = DateTime.Now.Hour;
-            var greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-            WelcomeMessage = $"{greeting}, {Username}! Ready to connect?";
-        }
+    public int MessagesSentCount
+    {
+        get => _messagesSentCount;
+        set { _messagesSentCount = value; OnPropertyChanged(); }
+    }
 
-        private async Task NavigateToDiscoverAsync()
-        {
-            try
-            {
-                await Shell.Current.GoToAsync("//DiscoverPage");
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.MainPage.DisplayAlert("Navigation Error", ex.Message, "OK");
-            }
-        }
+    public string VoiceStatus
+    {
+        get => _voiceStatus;
+        set { _voiceStatus = value; OnPropertyChanged(); }
+    }
 
-        private async Task NavigateToContactsAsync()
-        {
-            try
-            {
-                await Shell.Current.GoToAsync("//ContactsPage");
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.MainPage.DisplayAlert("Navigation Error", ex.Message, "OK");
-            }
-        }
+    public string LocalPeerId
+    {
+        get => _localPeerId;
+        set { _localPeerId = value; OnPropertyChanged(); }
+    }
 
-        private void RefreshStatistics()
-        {
-            OnPropertyChanged(nameof(ConnectedPeersCount));
-            OnPropertyChanged(nameof(DiscoveredPeersCount));
-            OnPropertyChanged(nameof(VoiceStatus));
-            OnPropertyChanged(nameof(ConnectionStatus));
-            UpdateWelcomeMessage();
-        }
+    public string Username
+    {
+        get => _username;
+        set { _username = value; OnPropertyChanged(); }
+    }
 
-        protected void OnPropertyChanged([CallerMemberName] string name = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
+    public string ConnectionStatus
+    {
+        get => _connectionStatus;
+        set { _connectionStatus = value; OnPropertyChanged(); }
+    }
+
+    public bool IsConnected
+    {
+        get => _isConnected;
+        set { _isConnected = value; OnPropertyChanged(); }
+    }
+
+    public string LastActivityTime
+    {
+        get => _lastActivityTime;
+        set { _lastActivityTime = value; OnPropertyChanged(); }
+    }
+
+    public string Uptime
+    {
+        get => _uptime;
+        set { _uptime = value; OnPropertyChanged(); }
+    }
+
+    public ObservableCollection<ActivityInfo> RecentActivities => _recentActivities;
+
+    // Commands
+    public ICommand NavigateToDashboardCommand { get; private set; }
+    public ICommand NavigateToDiscoverCommand { get; private set; }
+    public ICommand NavigateToContactsCommand { get; private set; }
+    public ICommand NavigateToRoomsCommand { get; private set; }
+    public ICommand RefreshCommand { get; private set; }
+
+    public event PropertyChangedEventHandler PropertyChanged;
+    protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

@@ -1,150 +1,168 @@
-﻿using System;
+﻿using Proximity.Models;
+using Proximity.Services;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows.Input;
-using Microsoft.Maui.Controls;
-using Proximity.Models;
-using Proximity.Services;
 
-namespace Proximity.PageModels
+namespace Proximity.PageModels;
+
+public class DiscoverPageModel : INotifyPropertyChanged
 {
-    public class DiscoverPageModel : INotifyPropertyChanged
+    private readonly DiscoveryService _discoveryService;
+    private readonly ChatService _chatService;
+    private readonly PingService _pingService;
+    private string _localName;
+    private string _discoveryStatusText;
+    private string _lastScanTime;
+
+    public DiscoverPageModel(DiscoveryService discoveryService, ChatService chatService)
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        _discoveryService = discoveryService;
+        _chatService = chatService;
+        _pingService = new PingService();
 
-        private readonly DiscoveryService _discoveryService;
-        private readonly ChatService _chatService;
+        LocalName = _discoveryService.LocalName;
+        UpdateDiscoveryStatus();
 
-        // Local Name
-        private string _localName;
-        public string LocalName
+        InitializeCommands();
+
+        // Subscribe to discovery events
+        _discoveryService.PeerDiscovered += OnPeerDiscovered;
+    }
+
+    private void InitializeCommands()
+    {
+        ConnectCommand = new Command<PeerInfo>(async (peer) => await ConnectToPeer(peer));
+        DisconnectCommand = new Command<PeerInfo>(async (peer) => await DisconnectFromPeer(peer));
+        PingCommand = new Command<PeerInfo>(async (peer) => await PingPeer(peer));
+        RefreshCommand = new Command(async () => await RefreshPeers());
+    }
+
+    private void OnPeerDiscovered(object sender, PeerInfo peer)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
         {
-            get => _localName;
-            set { _localName = value; OnPropertyChanged(); }
+            UpdateDiscoveryStatus();
+        });
+    }
+
+    private void UpdateDiscoveryStatus()
+    {
+        var onlineCount = DiscoveredPeers.Count(p => p.IsOnline);
+        DiscoveryStatusText = $"📡 {onlineCount} peers online • Scanning...";
+        LastScanTime = $"Last scan: {DateTime.Now:HH:mm:ss}";
+    }
+
+    private async Task RefreshPeers()
+    {
+        _discoveryService.StartAdvertising();
+        UpdateDiscoveryStatus();
+        await Task.Delay(100);
+    }
+
+    private async Task ConnectToPeer(PeerInfo peer)
+    {
+        if (peer == null || peer.IsConnected) return;
+
+        try
+        {
+            await _chatService.ConnectToPeerAsync(peer);
+            peer.IsConnected = true;
+
+            // Auto-ping after connect
+            await PingPeer(peer);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Connect error: {ex.Message}");
+        }
+    }
+
+    private async Task DisconnectFromPeer(PeerInfo peer)
+    {
+        if (peer == null || !peer.IsConnected) return;
+
+        try
+        {
+            _chatService.DisconnectFromPeer(peer);
+            peer.IsConnected = false;
+            peer.Ping = 0;
+            peer.HasPing = false;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Disconnect error: {ex.Message}");
         }
 
-        // Discovered Peers
-        public ObservableCollection<PeerInfo> DiscoveredPeers => _discoveryService.DiscoveredPeers;
+        await Task.CompletedTask;
+    }
 
-        // Commands
-        public ICommand RefreshCommand { get; }
-        public ICommand ConnectCommand { get; }
-        public ICommand DisconnectCommand { get; }
+    private async Task PingPeer(PeerInfo peer)
+    {
+        if (peer == null || string.IsNullOrEmpty(peer.IpAddress)) return;
 
-        public DiscoverPageModel(DiscoveryService discoveryService, ChatService chatService)
+        try
         {
-            _discoveryService = discoveryService ?? throw new ArgumentNullException(nameof(discoveryService));
-            _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
+            var latency = await _pingService.PingAsync(peer.IpAddress);
 
-            LocalName = _discoveryService.MyDeviceName;
-
-            // Initialize commands
-            RefreshCommand = new Command(async () => await RefreshPeersAsync());
-            ConnectCommand = new Command<PeerInfo>(async (peer) => await ConnectToPeerAsync(peer));
-            DisconnectCommand = new Command<PeerInfo>(async (peer) => await DisconnectFromPeerAsync(peer));
-
-            // Start discovery automatically
-            _ = StartDiscoveryAsync();
-        }
-
-        private async Task StartDiscoveryAsync()
-        {
-            try
+            if (latency > 0)
             {
-                if (!_discoveryService.DiscoveredPeers.Any())
-                {
-                    await _discoveryService.StartAsync();
-                    await _chatService.StartAsync();
-                }
+                peer.Ping = latency;
+                peer.HasPing = true;
             }
-            catch (Exception ex)
+            else
             {
-                await Application.Current.MainPage.DisplayAlert("Discovery Error", ex.Message, "OK");
+                peer.Ping = 0;
+                peer.HasPing = false;
             }
         }
-
-        private async Task RefreshPeersAsync()
+        catch (Exception ex)
         {
-            try
-            {
-                // Restart discovery to force refresh
-                await _discoveryService.StopAsync();
-                await Task.Delay(500);
-                await _discoveryService.StartAsync();
-
-                await Application.Current.MainPage.DisplayAlert("Success", "Peer list refreshed", "OK");
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.MainPage.DisplayAlert("Refresh Error", ex.Message, "OK");
-            }
+            System.Diagnostics.Debug.WriteLine($"Ping error: {ex.Message}");
+            peer.HasPing = false;
         }
+    }
 
-        private async Task ConnectToPeerAsync(PeerInfo peer)
+    public void SaveUserName()
+    {
+        if (!string.IsNullOrWhiteSpace(LocalName))
         {
-            if (peer == null) return;
-
-            try
-            {
-                // Test connection by sending a hello message
-                var success = await _chatService.SendMessageAsync(peer, "Hello! Connected via Proximity.");
-
-                if (success)
-                {
-                    await Application.Current.MainPage.DisplayAlert(
-                        "Connected",
-                        $"Successfully connected to {peer.DeviceName}",
-                        "OK");
-                }
-                else
-                {
-                    await Application.Current.MainPage.DisplayAlert(
-                        "Connection Failed",
-                        $"Could not connect to {peer.DeviceName}",
-                        "OK");
-                }
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.MainPage.DisplayAlert("Connection Error", ex.Message, "OK");
-            }
+            _discoveryService.LocalName = LocalName;
+            Preferences.Set("username", LocalName);
         }
+    }
 
-        private async Task DisconnectFromPeerAsync(PeerInfo peer)
-        {
-            if (peer == null) return;
+    // Properties
+    public ObservableCollection<PeerInfo> DiscoveredPeers => _discoveryService.DiscoveredPeers;
 
-            try
-            {
-                // Send goodbye message
-                await _chatService.SendMessageAsync(peer, "Disconnected from Proximity.");
+    public string LocalName
+    {
+        get => _localName;
+        set { _localName = value; OnPropertyChanged(); }
+    }
 
-                await Application.Current.MainPage.DisplayAlert(
-                    "Disconnected",
-                    $"Disconnected from {peer.DeviceName}",
-                    "OK");
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.MainPage.DisplayAlert("Disconnect Error", ex.Message, "OK");
-            }
-        }
+    public string DiscoveryStatusText
+    {
+        get => _discoveryStatusText;
+        set { _discoveryStatusText = value; OnPropertyChanged(); }
+    }
 
-        public void SaveUserName()
-        {
-            if (!string.IsNullOrWhiteSpace(LocalName))
-            {
-                // TODO: Persist to preferences
-                Preferences.Set("UserName", LocalName);
-            }
-        }
+    public string LastScanTime
+    {
+        get => _lastScanTime;
+        set { _lastScanTime = value; OnPropertyChanged(); }
+    }
 
-        protected void OnPropertyChanged([CallerMemberName] string name = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
+    // Commands
+    public ICommand ConnectCommand { get; private set; }
+    public ICommand DisconnectCommand { get; private set; }
+    public ICommand PingCommand { get; private set; }
+    public ICommand RefreshCommand { get; private set; }
+
+    public event PropertyChangedEventHandler PropertyChanged;
+    protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

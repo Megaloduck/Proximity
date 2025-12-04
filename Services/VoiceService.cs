@@ -33,7 +33,9 @@ namespace Proximity.Services
 
         private bool _isInCall = false;
         private string _remoteIp;
+        private bool _isTransmitting = false;
 
+        public bool IsTransmitting => _isTransmitting;
         public event Action OnCallStarted;
         public event Action OnCallEnded;
         public event Action<string> OnError;
@@ -44,6 +46,45 @@ namespace Proximity.Services
         {
             _audioQueue = new ConcurrentQueue<byte[]>();
             _audioQueueSemaphore = new SemaphoreSlim(0);
+        }
+        public async Task StartTransmittingAsync()
+        {
+            if (_isTransmitting)
+                return;
+
+            try
+            {
+                _isTransmitting = true;
+
+                // Start capturing and transmitting audio
+                await Task.Run(() =>
+                {
+                    // TODO: Implement actual audio capture and transmission
+                    System.Diagnostics.Debug.WriteLine("VoiceService: Started transmitting");
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"VoiceService: Start transmitting error - {ex.Message}");
+                _isTransmitting = false;
+            }
+        }
+        public void StopTransmitting()
+        {
+            if (!_isTransmitting)
+                return;
+
+            try
+            {
+                _isTransmitting = false;
+
+                // Stop audio capture and transmission
+                System.Diagnostics.Debug.WriteLine("VoiceService: Stopped transmitting");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"VoiceService: Stop transmitting error - {ex.Message}");
+            }
         }
 
         public async Task StartCallAsync(PeerInfo targetPeer)

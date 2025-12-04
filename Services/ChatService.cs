@@ -1,225 +1,295 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using Proximity.Models;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using Proximity.Models;
 
-namespace Proximity.Services
+namespace Proximity.Services;
+
+public class ChatService : IDisposable
 {
+    private readonly ConcurrentDictionary<string, TcpClient> _connectedPeers = new();
+    private readonly ConcurrentDictionary<string, List<ChatMessage>> _chatHistory = new();
+    private readonly ConcurrentDictionary<string, NetworkStream> _peerStreams = new();
+    private TcpListener _listener;
+    private bool _isListening;
+    private int _totalMessagesSent;
+    private const int CHAT_PORT = 9002;
 
-    public class ChatService : IDisposable
+    public string LocalPeerId { get; private set; }
+
+    public event EventHandler<ChatMessage> MessageReceived;
+    public event EventHandler<ChatMessage> MessageSent;
+    public event EventHandler<string> PeerConnected;
+    public event EventHandler<string> PeerDisconnected;
+
+    public ChatService()
     {
-        private const int MESSAGE_PORT = 9001;
-        private const int MAX_MESSAGE_SIZE = 65536; // 64KB
+        LocalPeerId = Preferences.Get("peer_id", Guid.NewGuid().ToString());
+        Preferences.Set("peer_id", LocalPeerId);
+        StartListening();
+    }
 
-        private TcpListener _tcpServer;
-        private CancellationTokenSource _cts;
-        private Task _serverTask;
-        private bool _isRunning = false;
-
-        public string MyDeviceId { get; private set; }
-        public string MyDeviceName { get; private set; }
-
-        public event Action<ChatMessage> OnMessageReceived;
-        public event Action<string> OnTypingStatus; // deviceId of typing peer
-
-        public ChatService(string deviceId, string deviceName)
+    private async void StartListening()
+    {
+        try
         {
-            MyDeviceId = deviceId;
-            MyDeviceName = deviceName;
-        }
+            _listener = new TcpListener(IPAddress.Any, CHAT_PORT);
+            _listener.Start();
+            _isListening = true;
 
-        public async Task StartAsync()
-        {
-            if (_isRunning) return;
+            System.Diagnostics.Debug.WriteLine($"ChatService: Listening on port {CHAT_PORT}");
 
-            try
+            while (_isListening)
             {
-                _cts = new CancellationTokenSource();
-
-                // Start TCP server to receive messages
-                _tcpServer = new TcpListener(IPAddress.Any, MESSAGE_PORT);
-                _tcpServer.Start();
-
-                _serverTask = Task.Run(() => AcceptClientsLoopAsync(_cts.Token));
-
-                _isRunning = true;
-                Debug.WriteLine($"[Messaging] Server started on port {MESSAGE_PORT}");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Messaging] Start failed: {ex.Message}");
-                throw;
+                var client = await _listener.AcceptTcpClientAsync();
+                _ = Task.Run(() => HandleClient(client));
             }
         }
-
-        public async Task StopAsync()
+        catch (SocketException ex)
         {
-            if (!_isRunning) return;
-
-            try
-            {
-                _cts?.Cancel();
-                await (_serverTask ?? Task.CompletedTask);
-
-                _tcpServer?.Stop();
-
-                _isRunning = false;
-                Debug.WriteLine("[Messaging] Server stopped");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Messaging] Stop error: {ex.Message}");
-            }
+            System.Diagnostics.Debug.WriteLine($"ChatService socket error: {ex.Message}");
         }
-
-        private async Task AcceptClientsLoopAsync(CancellationToken token)
+        catch (Exception ex)
         {
-            while (!token.IsCancellationRequested)
-            {
-                try
-                {
-                    var client = await _tcpServer.AcceptTcpClientAsync();
-                    _ = Task.Run(() => HandleClientAsync(client, token));
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[Messaging] Accept error: {ex.Message}");
-                    await Task.Delay(100, token);
-                }
-            }
+            System.Diagnostics.Debug.WriteLine($"ChatService listening error: {ex.Message}");
         }
+    }
 
-        private async Task HandleClientAsync(TcpClient client, CancellationToken token)
+    private async Task HandleClient(TcpClient client)
+    {
+        NetworkStream stream = null;
+        string peerId = null;
+
+        try
         {
-            try
+            stream = client.GetStream();
+            var buffer = new byte[8192];
+            int bytesRead;
+
+            while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
             {
-                using (client)
+                var json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                var message = JsonSerializer.Deserialize<ChatMessage>(json);
+
+                if (message != null)
                 {
-                    var stream = client.GetStream();
-                    var buffer = new byte[MAX_MESSAGE_SIZE];
+                    peerId = message.SenderId;
 
-                    using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
-                    cts.CancelAfter(TimeSpan.FromSeconds(30)); // Timeout per message
-
-                    var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cts.Token);
-
-                    if (bytesRead > 0)
+                    // Store peer connection if first message
+                    if (!_connectedPeers.ContainsKey(peerId))
                     {
-                        var json = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        Debug.WriteLine($"[Messaging] Received: {json}");
-
-                        var message = JsonSerializer.Deserialize<ChatMessage>(json);
-
-                        if (message != null)
-                        {
-                            // Invoke on main thread for UI updates
-                            await Microsoft.Maui.ApplicationModel.MainThread.InvokeOnMainThreadAsync(() =>
-                            {
-                                if (message.Type == "text")
-                                {
-                                    OnMessageReceived?.Invoke(message);
-                                }
-                                else if (message.Type == "typing")
-                                {
-                                    OnTypingStatus?.Invoke(message.FromDeviceId);
-                                }
-                            });
-                        }
+                        _connectedPeers[peerId] = client;
+                        _peerStreams[peerId] = stream;
+                        PeerConnected?.Invoke(this, peerId);
+                        System.Diagnostics.Debug.WriteLine($"ChatService: Peer {message.SenderName} connected");
                     }
+
+                    message.IsSentByMe = false;
+                    message.IsDelivered = true;
+
+                    // Store in history
+                    AddToHistory(message.SenderId, message);
+
+                    // Notify listeners
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        MessageReceived?.Invoke(this, message);
+                    });
+
+                    System.Diagnostics.Debug.WriteLine($"ChatService: Received message from {message.SenderName}");
                 }
             }
-            catch (OperationCanceledException)
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ChatService handle client error: {ex.Message}");
+        }
+        finally
+        {
+            if (peerId != null)
             {
-                Debug.WriteLine("[Messaging] Client handler timeout");
+                _connectedPeers.TryRemove(peerId, out _);
+                _peerStreams.TryRemove(peerId, out _);
+                PeerDisconnected?.Invoke(this, peerId);
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Messaging] Handle client error: {ex.Message}");
-            }
+
+            stream?.Dispose();
+            client?.Close();
+        }
+    }
+
+    public async Task ConnectToPeerAsync(PeerInfo peer)
+    {
+        if (_connectedPeers.ContainsKey(peer.PeerId))
+        {
+            System.Diagnostics.Debug.WriteLine($"ChatService: Already connected to {peer.Name}");
+            return;
         }
 
-        public async Task<bool> SendMessageAsync(PeerInfo targetPeer, string text)
+        try
         {
-            if (targetPeer == null || string.IsNullOrEmpty(text))
-                return false;
+            var client = new TcpClient();
+            await client.ConnectAsync(peer.IpAddress, CHAT_PORT);
 
-            var message = new ChatMessage
-            {
-                MessageId = Guid.NewGuid().ToString("N"),
-                Type = "text",
-                FromDeviceId = MyDeviceId,
-                FromDeviceName = MyDeviceName,
-                ToDeviceId = targetPeer.DeviceId,
-                Text = text,
-                Timestamp = DateTime.UtcNow
-            };
+            _connectedPeers[peer.PeerId] = client;
+            _peerStreams[peer.PeerId] = client.GetStream();
 
-            return await SendMessageAsync(targetPeer.IpAddress, targetPeer.Port, message);
+            peer.IsConnected = true;
+            PeerConnected?.Invoke(this, peer.PeerId);
+
+            // Start listening for messages from this peer
+            _ = Task.Run(() => HandleClient(client));
+
+            System.Diagnostics.Debug.WriteLine($"ChatService: Connected to {peer.Name} at {peer.IpAddress}");
         }
-
-        public async Task<bool> SendTypingStatusAsync(PeerInfo targetPeer, bool isTyping)
+        catch (Exception ex)
         {
-            if (targetPeer == null)
-                return false;
-
-            var message = new ChatMessage
-            {
-                Type = "typing",
-                FromDeviceId = MyDeviceId,
-                FromDeviceName = MyDeviceName,
-                ToDeviceId = targetPeer.DeviceId,
-                Timestamp = DateTime.UtcNow,
-                Metadata = new Dictionary<string, object> { { "isTyping", isTyping } }
-            };
-
-            return await SendMessageAsync(targetPeer.IpAddress, targetPeer.Port, message);
+            System.Diagnostics.Debug.WriteLine($"ChatService connect error: {ex.Message}");
+            throw new InvalidOperationException($"Failed to connect to {peer.Name}: {ex.Message}");
         }
+    }
 
-        private async Task<bool> SendMessageAsync(string targetIp, int targetPort, ChatMessage message)
+    public void DisconnectFromPeer(PeerInfo peer)
+    {
+        if (_connectedPeers.TryRemove(peer.PeerId, out var client))
         {
-            TcpClient client = null;
+            _peerStreams.TryRemove(peer.PeerId, out _);
+
             try
-            {
-                client = new TcpClient();
-
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                await client.ConnectAsync(targetIp, targetPort, cts.Token);
-
-                var json = JsonSerializer.Serialize(message);
-                var bytes = Encoding.UTF8.GetBytes(json);
-
-                var stream = client.GetStream();
-                await stream.WriteAsync(bytes, 0, bytes.Length, cts.Token);
-                await stream.FlushAsync(cts.Token);
-
-                Debug.WriteLine($"[Messaging] Sent to {targetIp}:{targetPort} - Type: {message.Type}");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Messaging] Send error to {targetIp}:{targetPort} - {ex.Message}");
-                return false;
-            }
-            finally
             {
                 client?.Close();
+                client?.Dispose();
             }
+            catch { }
+
+            peer.IsConnected = false;
+            PeerDisconnected?.Invoke(this, peer.PeerId);
+
+            System.Diagnostics.Debug.WriteLine($"ChatService: Disconnected from {peer.Name}");
+        }
+    }
+
+    public async Task SendMessageAsync(PeerInfo peer, string content)
+    {
+        if (!_peerStreams.TryGetValue(peer.PeerId, out var stream))
+        {
+            throw new InvalidOperationException("Not connected to peer. Connect first.");
         }
 
-        public void Dispose()
+        var message = new ChatMessage
         {
-            StopAsync().Wait();
-            _cts?.Dispose();
+            MessageId = Guid.NewGuid().ToString(),
+            SenderId = LocalPeerId,
+            SenderName = Preferences.Get("username", "Me"),
+            ReceiverId = peer.PeerId,
+            ReceiverName = peer.Name,
+            Content = content,
+            Timestamp = DateTime.Now,
+            IsSentByMe = true,
+            IsDelivered = false
+        };
+
+        try
+        {
+            var json = JsonSerializer.Serialize(message);
+            var data = Encoding.UTF8.GetBytes(json);
+
+            await stream.WriteAsync(data, 0, data.Length);
+            await stream.FlushAsync();
+
+            // Store in history
+            AddToHistory(peer.PeerId, message);
+
+            _totalMessagesSent++;
+
+            // Mark as delivered after successful send
+            message.IsDelivered = true;
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                MessageSent?.Invoke(this, message);
+            });
+
+            System.Diagnostics.Debug.WriteLine($"ChatService: Sent message to {peer.Name}");
         }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ChatService send error: {ex.Message}");
+            throw new InvalidOperationException($"Failed to send message: {ex.Message}");
+        }
+    }
+
+    private void AddToHistory(string peerId, ChatMessage message)
+    {
+        if (!_chatHistory.ContainsKey(peerId))
+        {
+            _chatHistory[peerId] = new List<ChatMessage>();
+        }
+        _chatHistory[peerId].Add(message);
+    }
+
+    public List<ChatMessage> GetChatHistory(string peerId)
+    {
+        return _chatHistory.TryGetValue(peerId, out var history)
+            ? new List<ChatMessage>(history)
+            : new List<ChatMessage>();
+    }
+
+    public void ClearChatHistory(string peerId)
+    {
+        _chatHistory.TryRemove(peerId, out _);
+    }
+
+    public void ClearAllHistory()
+    {
+        _chatHistory.Clear();
+    }
+
+    public int GetTotalMessagesSent()
+    {
+        return _totalMessagesSent;
+    }
+
+    public int GetTotalMessagesReceived()
+    {
+        return _chatHistory.Values.Sum(history => history.Count(m => !m.IsSentByMe));
+    }
+
+    public bool IsConnectedToPeer(string peerId)
+    {
+        return _connectedPeers.ContainsKey(peerId);
+    }
+
+    public List<string> GetConnectedPeerIds()
+    {
+        return _connectedPeers.Keys.ToList();
+    }
+
+    public void Dispose()
+    {
+        _isListening = false;
+
+        try
+        {
+            _listener?.Stop();
+        }
+        catch { }
+
+        foreach (var client in _connectedPeers.Values)
+        {
+            try
+            {
+                client?.Close();
+                client?.Dispose();
+            }
+            catch { }
+        }
+
+        _connectedPeers.Clear();
+        _peerStreams.Clear();
+
+        System.Diagnostics.Debug.WriteLine("ChatService: Disposed");
     }
 }

@@ -32,19 +32,18 @@ namespace Proximity
 #endif
 
             // ===== Register Services =====
+            // Register Services (Singletons - shared across app)
+            builder.Services.AddSingleton<DiscoveryService>();
+            builder.Services.AddSingleton<ChatService>();
+            builder.Services.AddSingleton<VoiceService>();
+            builder.Services.AddSingleton<RoomService>();
+            builder.Services.AddSingleton<BroadcastService>();
+            builder.Services.AddSingleton<AuditoriumService>();
+            builder.Services.AddSingleton<PingService>();
 
             // Discovery Service - Singleton so all pages share same instance
-            builder.Services.AddSingleton<DiscoveryService>(sp =>
-            {
-                var deviceName = Preferences.Get("UserName", "User");
-                return new DiscoveryService(deviceName, port: 9001);
-            });
-            // Messaging Service - Singleton, depends on Discovery
-            builder.Services.AddSingleton<ChatService>(sp =>
-            {
-                var discovery = sp.GetRequiredService<DiscoveryService>();
-                return new ChatService(discovery.MyDeviceId, discovery.MyDeviceName);
-            });
+            builder.Services.AddSingleton<DiscoveryService>();
+            builder.Services.AddSingleton<ChatService>();
 
             // Core Fundamental Pages
             builder.Services.AddSingleton<LoginPage>();

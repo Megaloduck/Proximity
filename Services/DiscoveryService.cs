@@ -1,268 +1,224 @@
-﻿using System;
+﻿using Proximity.Models;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Proximity.Models;
+using System.Text.Json;
 
-namespace Proximity.Services
+namespace Proximity.Services;
+
+public class DiscoveryService : IDisposable
 {
-    public class DiscoveryService : IDisposable
+    private readonly UdpClient _udpClient;
+    private readonly ObservableCollection<PeerInfo> _discoveredPeers = new();
+    private bool _isRunning;
+    private const int DISCOVERY_PORT = 9001;
+    private System.Timers.Timer _advertisingTimer;
+    private System.Timers.Timer _cleanupTimer;
+
+    // Properties
+    public string LocalPeerId { get; private set; }
+    public string LocalName { get; set; }
+    public bool IsRunning => _isRunning;
+    public ObservableCollection<PeerInfo> DiscoveredPeers => _discoveredPeers;
+
+    // Events
+    public event EventHandler<PeerInfo> PeerDiscovered;
+    public event EventHandler<PeerInfo> PeerUpdated;
+    public event EventHandler<string> PeerLost;
+
+    public DiscoveryService()
     {
-        private const int DISCOVERY_PORT = 8888;
-        private const int BROADCAST_INTERVAL_MS = 3000; // 3 seconds
-        private const int CLEANUP_INTERVAL_MS = 5000; // 5 seconds
-        private const int PEER_TIMEOUT_SECONDS = 15;
+        // Initialize local peer info
+        LocalPeerId = Preferences.Get("peer_id", Guid.NewGuid().ToString());
+        Preferences.Set("peer_id", LocalPeerId);
 
-        private UdpClient _udpSender;
-        private UdpClient _udpListener;
-        private CancellationTokenSource _cts;
-        private Task _broadcastTask;
-        private Task _listenTask;
-        private Task _cleanupTask;
+        LocalName = Preferences.Get("username", Environment.UserName ?? "Anonymous");
 
-        public string MyDeviceId { get; private set; }
-        public string MyDeviceName { get; private set; }
-        public int MyPort { get; private set; }
-        public ObservableCollection<PeerInfo> DiscoveredPeers { get; }
-
-        private bool _isRunning = false;
-
-        public event Action<PeerInfo> OnPeerDiscovered;
-        public event Action<PeerInfo> OnPeerLost;
-
-        public DiscoveryService(string deviceName, int port = 9001)
+        try
         {
-            MyDeviceId = Guid.NewGuid().ToString("N").Substring(0, 8);
-            MyDeviceName = deviceName;
-            MyPort = port;
-            DiscoveredPeers = new ObservableCollection<PeerInfo>();
+            _udpClient = new UdpClient(DISCOVERY_PORT);
+            _udpClient.EnableBroadcast = true;
+            StartListening();
+            StartAdvertising();
+            StartCleanupTimer();
+            _isRunning = true;
+
+            System.Diagnostics.Debug.WriteLine($"DiscoveryService: Started with ID {LocalPeerId}");
         }
-
-        public async Task StartAsync()
+        catch (Exception ex)
         {
-            if (_isRunning) return;
-
-            try
-            {
-                _cts = new CancellationTokenSource();
-
-                // Setup UDP sender for broadcasts
-                _udpSender = new UdpClient();
-                _udpSender.EnableBroadcast = true;
-
-                // Setup UDP listener for receiving broadcasts
-                _udpListener = new UdpClient();
-                _udpListener.ExclusiveAddressUse = false;
-                _udpListener.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                _udpListener.Client.Bind(new IPEndPoint(IPAddress.Any, DISCOVERY_PORT));
-
-                // Start background tasks
-                _broadcastTask = Task.Run(() => BroadcastPresenceLoopAsync(_cts.Token));
-                _listenTask = Task.Run(() => ListenForPeersLoopAsync(_cts.Token));
-                _cleanupTask = Task.Run(() => CleanupInactivePeersLoopAsync(_cts.Token));
-
-                _isRunning = true;
-                Debug.WriteLine($"[Discovery] Started - DeviceId: {MyDeviceId}, Name: {MyDeviceName}, Port: {MyPort}");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Discovery] Start failed: {ex.Message}");
-                throw;
-            }
+            System.Diagnostics.Debug.WriteLine($"DiscoveryService initialization error: {ex.Message}");
         }
-        public async Task StopAsync()
+    }
+
+    private void StartAdvertising()
+    {
+        _advertisingTimer = new System.Timers.Timer(5000); // Advertise every 5 seconds
+        _advertisingTimer.Elapsed += async (s, e) => await BroadcastPresenceAsync();
+        _advertisingTimer.Start();
+
+        // Send initial broadcast immediately
+        _ = BroadcastPresenceAsync();
+    }
+
+    private void StartCleanupTimer()
+    {
+        _cleanupTimer = new System.Timers.Timer(10000); // Check every 10 seconds
+        _cleanupTimer.Elapsed += (s, e) => CleanupOldPeers();
+        _cleanupTimer.Start();
+    }
+
+    private async void StartListening()
+    {
+        try
         {
-            if (!_isRunning) return;
-
-            try
+            while (_isRunning)
             {
-                _cts?.Cancel();
+                var result = await _udpClient.ReceiveAsync();
+                var json = Encoding.UTF8.GetString(result.Buffer);
 
-                await Task.WhenAll(
-                    _broadcastTask ?? Task.CompletedTask,
-                    _listenTask ?? Task.CompletedTask,
-                    _cleanupTask ?? Task.CompletedTask
-                ).ConfigureAwait(false);
-
-                _udpSender?.Close();
-                _udpListener?.Close();
-
-                DiscoveredPeers.Clear();
-                _isRunning = false;
-
-                Debug.WriteLine("[Discovery] Stopped");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Discovery] Stop error: {ex.Message}");
-            }
-        }
-        private async Task BroadcastPresenceLoopAsync(CancellationToken token)
-        {
-            var broadcastEndpoint = new IPEndPoint(IPAddress.Broadcast, DISCOVERY_PORT);
-
-            while (!token.IsCancellationRequested)
-            {
                 try
                 {
-                    // Format: "DISCOVER|DeviceId|DeviceName|Port"
-                    var message = $"DISCOVER|{MyDeviceId}|{MyDeviceName}|{MyPort}";
-                    var bytes = Encoding.UTF8.GetBytes(message);
+                    var discoveryMessage = JsonSerializer.Deserialize<DiscoveryMessage>(json);
 
-                    await _udpSender.SendAsync(bytes, bytes.Length, broadcastEndpoint);
-                    Debug.WriteLine($"[Discovery] Broadcast sent: {message}");
-
-                    await Task.Delay(BROADCAST_INTERVAL_MS, token);
+                    if (discoveryMessage != null && discoveryMessage.PeerId != LocalPeerId)
+                    {
+                        var ipAddress = result.RemoteEndPoint.Address.ToString();
+                        HandleDiscoveredPeer(discoveryMessage, ipAddress);
+                    }
                 }
-                catch (OperationCanceledException)
+                catch (JsonException ex)
                 {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[Discovery] Broadcast error: {ex.Message}");
-                    await Task.Delay(1000, token);
+                    System.Diagnostics.Debug.WriteLine($"DiscoveryService JSON error: {ex.Message}");
                 }
             }
         }
-        private async Task ListenForPeersLoopAsync(CancellationToken token)
+        catch (Exception ex)
         {
-            while (!token.IsCancellationRequested)
+            if (_isRunning)
             {
-                try
-                {
-                    var result = await _udpListener.ReceiveAsync();
-                    var message = Encoding.UTF8.GetString(result.Buffer);
-                    var senderIp = result.RemoteEndPoint.Address.ToString();
-
-                    // Ignore our own broadcasts
-                    if (IsLocalIpAddress(senderIp))
-                        continue;
-
-                    Debug.WriteLine($"[Discovery] Received from {senderIp}: {message}");
-
-                    // Parse: "DISCOVER|DeviceId|DeviceName|Port"
-                    var parts = message.Split('|');
-                    if (parts.Length == 4 && parts[0] == "DISCOVER")
-                    {
-                        var deviceId = parts[1];
-                        var deviceName = parts[2];
-                        var port = int.Parse(parts[3]);
-
-                        // Ignore our own device
-                        if (deviceId == MyDeviceId)
-                            continue;
-
-                        await UpdatePeerAsync(deviceId, deviceName, senderIp, port);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[Discovery] Listen error: {ex.Message}");
-                    await Task.Delay(100, token);
-                }
+                System.Diagnostics.Debug.WriteLine($"DiscoveryService listening error: {ex.Message}");
             }
         }
-        private async Task CleanupInactivePeersLoopAsync(CancellationToken token)
+    }
+
+    private void HandleDiscoveredPeer(DiscoveryMessage message, string ipAddress)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
         {
-            while (!token.IsCancellationRequested)
-            {
-                try
-                {
-                    await Task.Delay(CLEANUP_INTERVAL_MS, token);
-
-                    var now = DateTime.UtcNow;
-                    var peersToRemove = new List<PeerInfo>();
-
-                    foreach (var peer in DiscoveredPeers)
-                    {
-                        if ((now - peer.LastSeen).TotalSeconds > PEER_TIMEOUT_SECONDS)
-                        {
-                            peersToRemove.Add(peer);
-                        }
-                    }
-
-                    foreach (var peer in peersToRemove)
-                    {
-                        await Microsoft.Maui.ApplicationModel.MainThread.InvokeOnMainThreadAsync(() =>
-                        {
-                            DiscoveredPeers.Remove(peer);
-                        });
-
-                        OnPeerLost?.Invoke(peer);
-                        Debug.WriteLine($"[Discovery] Peer lost: {peer.DeviceName} ({peer.IpAddress})");
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[Discovery] Cleanup error: {ex.Message}");
-                }
-            }
-        }
-        private async Task UpdatePeerAsync(string deviceId, string deviceName, string ipAddress, int port)
-        {
-            var existingPeer = DiscoveredPeers.FirstOrDefault(p => p.DeviceId == deviceId);
+            var existingPeer = _discoveredPeers.FirstOrDefault(p => p.PeerId == message.PeerId);
 
             if (existingPeer != null)
             {
                 // Update existing peer
-                existingPeer.LastSeen = DateTime.UtcNow;
-                existingPeer.DeviceName = deviceName;
+                existingPeer.Name = message.Name;
                 existingPeer.IpAddress = ipAddress;
-                existingPeer.Port = port;
+                existingPeer.IsOnline = true;
+                existingPeer.LastSeen = DateTime.Now;
+                existingPeer.Avatar = message.Avatar;
+                existingPeer.StatusMessage = message.StatusMessage;
+
+                PeerUpdated?.Invoke(this, existingPeer);
             }
             else
             {
                 // Add new peer
                 var newPeer = new PeerInfo
                 {
-                    DeviceId = deviceId,
-                    DeviceName = deviceName,
+                    PeerId = message.PeerId,
+                    Name = message.Name,
                     IpAddress = ipAddress,
-                    Port = port,
-                    LastSeen = DateTime.UtcNow
+                    Port = DISCOVERY_PORT,
+                    IsOnline = true,
+                    LastSeen = DateTime.Now,
+                    Avatar = message.Avatar,
+                    StatusMessage = message.StatusMessage
                 };
 
-                await Microsoft.Maui.ApplicationModel.MainThread.InvokeOnMainThreadAsync(() =>
-                {
-                    DiscoveredPeers.Add(newPeer);
-                });
+                _discoveredPeers.Add(newPeer);
+                PeerDiscovered?.Invoke(this, newPeer);
 
-                OnPeerDiscovered?.Invoke(newPeer);
-                Debug.WriteLine($"[Discovery] New peer: {deviceName} ({ipAddress}:{port})");
+                System.Diagnostics.Debug.WriteLine($"DiscoveryService: Discovered {newPeer.Name} at {ipAddress}");
             }
-        }
-        private bool IsLocalIpAddress(string ipAddress)
+        });
+    }
+
+    private async Task BroadcastPresenceAsync()
+    {
+        try
         {
-            try
+            var message = new DiscoveryMessage
             {
-                var hostName = Dns.GetHostName();
-                var localIPs = Dns.GetHostAddresses(hostName);
-                return localIPs.Any(ip => ip.ToString() == ipAddress);
-            }
-            catch
-            {
-                return false;
-            }
+                PeerId = LocalPeerId,
+                Name = LocalName,
+                Avatar = Preferences.Get("user_avatar", "👤"),
+                StatusMessage = Preferences.Get("user_status", ""),
+                Timestamp = DateTime.Now
+            };
+
+            var json = JsonSerializer.Serialize(message);
+            var data = Encoding.UTF8.GetBytes(json);
+
+            var endpoint = new IPEndPoint(IPAddress.Broadcast, DISCOVERY_PORT);
+            await _udpClient.SendAsync(data, data.Length, endpoint);
         }
-        public void Dispose()
+        catch (Exception ex)
         {
-            StopAsync().Wait();
-            _cts?.Dispose();
-            _udpSender?.Dispose();
-            _udpListener?.Dispose();
+            System.Diagnostics.Debug.WriteLine($"DiscoveryService broadcast error: {ex.Message}");
         }
     }
+
+    private void CleanupOldPeers()
+    {
+        var threshold = DateTime.Now.AddSeconds(-30); // Consider peers offline after 30 seconds
+
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            var peersToRemove = _discoveredPeers.Where(p => p.LastSeen < threshold).ToList();
+
+            foreach (var peer in peersToRemove)
+            {
+                peer.IsOnline = false;
+                PeerLost?.Invoke(this, peer.PeerId);
+
+                // Optionally remove completely after being offline for a while
+                if (peer.LastSeen < DateTime.Now.AddMinutes(-5))
+                {
+                    _discoveredPeers.Remove(peer);
+                }
+            }
+        });
+    }
+
+    public void UpdateLocalName(string name)
+    {
+        LocalName = name;
+        Preferences.Set("username", name);
+        _ = BroadcastPresenceAsync(); // Broadcast immediately with new name
+    }
+
+    public void Stop()
+    {
+        _isRunning = false;
+        _advertisingTimer?.Stop();
+        _cleanupTimer?.Stop();
+    }
+
+    public void Dispose()
+    {
+        Stop();
+
+        try
+        {
+            _advertisingTimer?.Dispose();
+            _cleanupTimer?.Dispose();
+            _udpClient?.Close();
+            _udpClient?.Dispose();
+        }
+        catch { }
+
+        System.Diagnostics.Debug.WriteLine("DiscoveryService: Disposed");
+    }
 }
+
