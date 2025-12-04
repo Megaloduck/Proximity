@@ -5,10 +5,10 @@ namespace Proximity.Pages.Tools;
 
 public partial class RoomsPage : ContentPage
 {
-    public RoomsPage(RoomService roomService)
+    public RoomsPage(RoomService roomService, DiscoveryService discoveryService)
     {
         InitializeComponent();
-        BindingContext = new RoomsPageModel(roomService);
+        BindingContext = new RoomsPageModel(roomService, discoveryService);
     }
 
     public RoomsPage()

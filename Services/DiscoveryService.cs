@@ -19,6 +19,8 @@ public class DiscoveryService : IDisposable
     // Properties
     public string LocalPeerId { get; private set; }
     public string LocalName { get; set; }
+    public string MyDeviceId => LocalPeerId; // Alias for compatibility
+    public string MyDeviceName { get; set; } // Device description
     public bool IsRunning => _isRunning;
     public ObservableCollection<PeerInfo> DiscoveredPeers => _discoveredPeers;
 
@@ -34,6 +36,7 @@ public class DiscoveryService : IDisposable
         Preferences.Set("peer_id", LocalPeerId);
 
         LocalName = Preferences.Get("username", Environment.UserName ?? "Anonymous");
+        MyDeviceName = Preferences.Get("device_name", GetDefaultDeviceName());
 
         try
         {
@@ -52,8 +55,23 @@ public class DiscoveryService : IDisposable
         }
     }
 
-    private void StartAdvertising()
+    private string GetDefaultDeviceName()
     {
+        try
+        {
+            return DeviceInfo.Current.Name ?? Environment.MachineName ?? "Unknown Device";
+        }
+        catch
+        {
+            return "Unknown Device";
+        }
+    }
+
+    public void StartAdvertising() // Made public for DiscoverPageModel
+    {
+        if (_advertisingTimer != null)
+            return;
+
         _advertisingTimer = new System.Timers.Timer(5000); // Advertise every 5 seconds
         _advertisingTimer.Elapsed += async (s, e) => await BroadcastPresenceAsync();
         _advertisingTimer.Start();
@@ -198,6 +216,12 @@ public class DiscoveryService : IDisposable
         _ = BroadcastPresenceAsync(); // Broadcast immediately with new name
     }
 
+    public void UpdateDeviceName(string name)
+    {
+        MyDeviceName = name;
+        Preferences.Set("device_name", name);
+    }
+
     public void Stop()
     {
         _isRunning = false;
@@ -221,4 +245,3 @@ public class DiscoveryService : IDisposable
         System.Diagnostics.Debug.WriteLine("DiscoveryService: Disposed");
     }
 }
-

@@ -2,32 +2,24 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Proximity.Pages.Tools.AuditoriumPage"
-           Title="Auditorium">
+             Title="Auditorium">
 
-    <VerticalStackLayout Padding="40" Spacing="20" VerticalOptions="Center">
-        <Label Text="🎤"
-               FontSize="64"
-               HorizontalOptions="Center"/>
+    <Grid RowDefinitions="Auto,*,Auto" Padding="20" RowSpacing="15">
 
-        <Label Text="Voice Auditorium"
-               FontSize="28"
-               FontAttributes="Bold"
-               HorizontalOptions="Center"
-               TextColor="{DynamicResource PrimaryTextColor}"/>
+        <!-- Header -->
+        <Border Grid.Row="0"
+                BackgroundColor="{DynamicResource CardBackgroundColor}"
+                Stroke="{DynamicResource SuccessColor}"
+                StrokeThickness="2"
+                Padding="20"
+                StrokeShape="RoundRectangle 12">
 
-        <Label Text="Multi-user voice rooms with audio mixing"
-               FontSize="16"
-               HorizontalOptions="Center"
-               TextColor="{DynamicResource SecondaryTextColor}"/>
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="15">
+                <Label Grid.Column="0"
+                       Text="🎤"
+                       FontSize="48"
+                       VerticalOptions="Center"/>
 
-<<<<<<< Updated upstream
-        <Label Text="Coming Soon in v1.3"
-               FontSize="14"
-               HorizontalOptions="Center"
-               Margin="0,20,0,0"
-               TextColor="{DynamicResource AccentColor}"/>
-    </VerticalStackLayout>
-=======
                 <VerticalStackLayout Grid.Column="1" Spacing="5">
                     <Label Text="Voice Auditorium"
                            FontSize="22"
@@ -92,75 +84,66 @@
                                 FontSize="12"/>
                     </Grid>
 
-                    <!-- Screen Share Display Container -->
-                    <Border Grid.Row="1"
-                            Margin="15"        
+                    <!-- Screen Share Display / Placeholder -->
+                    <Border Grid.Row="1" 
+                            Margin="15"
                             BackgroundColor="{DynamicResource PageBackgroundColor}"
                             Stroke="{DynamicResource BorderColor}"
                             StrokeThickness="1"
                             StrokeShape="RoundRectangle 8">
                         
                         <Grid>
-                            <!-- No Presentation Placeholder -->
-                            <VerticalStackLayout
-                                Spacing="15"
-                                IsVisible="{Binding HasActivePresentation, Converter={StaticResource InvertedBoolConverter}}"
-                                VerticalOptions="Center"
-                                HorizontalOptions="Center">
-                                
+                            <!-- Placeholder when no screen share -->
+                            <VerticalStackLayout Spacing="15"
+                                            IsVisible="{Binding HasActivePresentation, Converter={StaticResource InvertedBoolConverter}}"
+                                            VerticalOptions="Center"
+                                            HorizontalOptions="Center">
                                 <Label Text="📺"
-                                       FontSize="64"
-                                       HorizontalOptions="Center"/>
-                                
+                                   FontSize="64"
+                                   HorizontalOptions="Center"/>
                                 <Label Text="No active presentation"
-                                       FontSize="16"
-                                       TextColor="{DynamicResource SecondaryTextColor}"
-                                       HorizontalOptions="Center"/>
-                                
+                                   FontSize="16"
+                                   TextColor="{DynamicResource SecondaryTextColor}"
+                                   HorizontalOptions="Center"/>
                                 <Label Text="Click 'Share Screen' to start broadcasting"
-                                       FontSize="13"
-                                       TextColor="{DynamicResource TertiaryTextColor}"
-                                       HorizontalOptions="Center"/>
-                            </VerticalStackLayout>                            
-                            
-                            <!-- Presentation Preview -->
-                            <Grid IsVisible="{Binding HasActivePresentation}"
-                                  Padding="0">
+                                   FontSize="13"
+                                   TextColor="{DynamicResource TertiaryTextColor}"
+                                   HorizontalOptions="Center"/>
+                            </VerticalStackLayout>
 
-                                <!-- Live Screenshot -->
+                            <!-- Active Screen Share Display -->
+                            <Grid IsVisible="{Binding HasActivePresentation}"
+                              Padding="15">
                                 <Image Source="{Binding ScreenSharePreview}"
-                                       Aspect="AspectFit"/>
+                                   Aspect="AspectFit"/>
 
                                 <!-- Presenter Info Overlay -->
                                 <Border Padding="10"
-                                        BackgroundColor="#CC000000"
-                                        StrokeShape="RoundRectangle 6"
-                                        VerticalOptions="Start"
-                                        HorizontalOptions="Start"
-                                        Margin="15">
-
+                                   BackgroundColor="#CC000000"
+                                   StrokeShape="RoundRectangle 6"
+                                   VerticalOptions="Start"
+                                   HorizontalOptions="Start"
+                                   Margin="10">
                                     <HorizontalStackLayout Spacing="8">
-                                        <!-- Avatar (Emoji or Text Avatar) -->
                                         <Label Text="{Binding PresenterAvatar}"
-                                               FontSize="20"
-                                               VerticalOptions="Center"/>
-
+                                           FontSize="20"/>
                                         <VerticalStackLayout Spacing="2">
                                             <Label Text="{Binding PresenterName}"
-                                                   FontSize="13"
-                                                   FontAttributes="Bold"
-                                                   TextColor="White"/>
-
+                                               FontSize="13"
+                                               FontAttributes="Bold"
+                                               TextColor="White"/>
                                             <Label Text="Presenting"
-                                                   FontSize="11"
-                                                   TextColor="White"/>
+                                               FontSize="11"
+                                               TextColor="White"/>
                                         </VerticalStackLayout>
                                     </HorizontalStackLayout>
                                 </Border>
                             </Grid>
-                        </Grid>
-                    </Border>
 
+                        </Grid>
+
+
+                    </Border>
 
                     <!-- Stage Controls -->
                     <Grid Grid.Row="2" 
@@ -282,7 +265,7 @@
                                         <!-- Avatar -->
                                         <Border WidthRequest="50"
                                                HeightRequest="50"
-                                               StrokeShape="RounddRectangle 25"
+                                               StrokeShape="RoundRectangle 25"
                                                BackgroundColor="{DynamicResource PrimaryColor}">
                                             <Label Text="{Binding Avatar}"
                                                    FontSize="28"
@@ -362,5 +345,4 @@
             </Grid>
         </Border>
     </Grid>
->>>>>>> Stashed changes
 </ContentPage>
