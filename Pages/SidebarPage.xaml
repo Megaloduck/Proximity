@@ -212,7 +212,7 @@
                             <HorizontalStackLayout Spacing="10">
                                 <Label Text="{Binding IsDarkMode}" FontSize="16" VerticalOptions="Center" TextColor="{DynamicResource SecondaryTextColor}" />
                                 <Label Text="Dark Mode" FontSize="12" TextColor="{DynamicResource PrimaryTextColor}" VerticalOptions="Center" />
-                                <Switch IsToggled="{Binding IsDarkMode}" OnColor="{DynamicResource Primary}" ThumbColor="White" VerticalOptions="Center" Scale="0.7"/>
+                                <Switch IsToggled="{Binding IsDarkMode}" OnColor="{DynamicResource PrimaryColor}" ThumbColor="White" VerticalOptions="Center" Scale="0.7"/>
                             </HorizontalStackLayout>
                         </Border>
 

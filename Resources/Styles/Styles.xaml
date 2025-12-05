@@ -6,7 +6,46 @@
     xmlns:shimmer="clr-namespace:Syncfusion.Maui.Toolkit.Shimmer;assembly=Syncfusion.Maui.Toolkit">
 
 
+    <!-- Hover Button Style -->
+    <Style x:Key="HoverButtonStyle" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{DynamicResource CardBackgroundColor}" />
+        <Setter Property="TextColor" Value="{DynamicResource PrimaryTextColor}" />
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="BorderColor" Value="{DynamicResource BorderColor}" />
+        <Setter Property="BorderWidth" Value="1" />
+        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="VisualStateManager.VisualStateGroups">
+            <VisualStateGroupList>
+                <VisualStateGroup x:Name="CommonStates">
 
+                    <!-- NORMAL -->
+                    <VisualState x:Name="Normal">
+                        <VisualState.Setters>
+                            <Setter Property="Scale" Value="1" />
+                            <Setter Property="BackgroundColor" Value="{DynamicResource CardBackgroundColor}" />
+                        </VisualState.Setters>
+                    </VisualState>
+
+                    <!-- POINTER OVER (HOVER) -->
+                    <VisualState x:Name="PointerOver">
+                        <VisualState.Setters>
+                            <Setter Property="Scale" Value="1.08" />
+                            <Setter Property="BackgroundColor" Value="{DynamicResource PrimaryColor}" />
+                            <Setter Property="TextColor" Value="White" />
+                        </VisualState.Setters>
+                    </VisualState>
+
+                    <!-- PRESSED -->
+                    <VisualState x:Name="Pressed">
+                        <VisualState.Setters>
+                            <Setter Property="Scale" Value="0.95" />
+                        </VisualState.Setters>
+                    </VisualState>
+
+                </VisualStateGroup>
+            </VisualStateGroupList>
+        </Setter>
+    </Style>
 
     <!-- ============================================ -->
     <!-- SIDEBAR STYLES -->

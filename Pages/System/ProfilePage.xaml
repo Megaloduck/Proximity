@@ -39,7 +39,7 @@
                     <RoundRectangle CornerRadius="12"/>
                 </Border.StrokeShape>
 
-                <VerticalStackLayout Spacing="15">
+                <VerticalStackLayout >
                     <Label Text="Customize Your Card"
                            FontSize="20"
                            FontAttributes="Bold"
@@ -52,10 +52,12 @@
                                TextColor="{DynamicResource SecondaryTextColor}"/>
                         <Entry Text="{Binding DisplayName, Mode=TwoWay}"
                                Placeholder="Enter your display name"
+                              
                                FontSize="16"
                                MaxLength="30"
                                TextChanged="OnProfileChanged"/>
-                        <Label Text="{Binding DisplayName.Length, StringFormat='{0}/30 characters'}"
+
+                        <Label Text="{Binding DisplayNameLength, StringFormat='{0}/30 characters'}"
                                FontSize="11"
                                TextColor="{DynamicResource TertiaryTextColor}"/>
                     </VerticalStackLayout>
@@ -70,7 +72,8 @@
                                FontSize="14"
                                MaxLength="60"
                                TextChanged="OnProfileChanged"/>
-                        <Label Text="{Binding StatusMessage.Length, StringFormat='{0}/60 characters'}"
+
+                        <Label Text="{Binding StatusMessageLength, StringFormat='{0}/60 characters'}"
                                FontSize="11"
                                TextColor="{DynamicResource TertiaryTextColor}"/>
                     </VerticalStackLayout>
@@ -82,16 +85,38 @@
                                TextColor="{DynamicResource SecondaryTextColor}"/>
 
                         <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignItems="Start">
-                            <Button Text="😀" Command="{Binding SelectEmojiCommand}" CommandParameter="😀" WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Text="😎" Command="{Binding SelectEmojiCommand}" CommandParameter="😎" WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Text="🤖" Command="{Binding SelectEmojiCommand}" CommandParameter="🤖" WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Text="👾" Command="{Binding SelectEmojiCommand}" CommandParameter="👾" WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Text="🚀" Command="{Binding SelectEmojiCommand}" CommandParameter="🚀" WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Text="⚡" Command="{Binding SelectEmojiCommand}" CommandParameter="⚡" WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Text="🔥" Command="{Binding SelectEmojiCommand}" CommandParameter="🔥" WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Text="💎" Command="{Binding SelectEmojiCommand}" CommandParameter="💎" WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Text="🎮" Command="{Binding SelectEmojiCommand}" CommandParameter="🎮" WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Text="🎨" Command="{Binding SelectEmojiCommand}" CommandParameter="🎨" WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Style="{StaticResource HoverButtonStyle}"
+                                    Text="😀"
+                                    Command="{Binding SelectEmojiCommand}"
+                                    CommandParameter="😀"
+                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Style="{StaticResource HoverButtonStyle}"
+                                    Text="😎" Command="{Binding SelectEmojiCommand}" CommandParameter="😎"
+                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Style="{StaticResource HoverButtonStyle}"
+                                    Text="🤖" Command="{Binding SelectEmojiCommand}" CommandParameter="🤖"
+                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Style="{StaticResource HoverButtonStyle}"
+                                    Text="👾" Command="{Binding SelectEmojiCommand}" CommandParameter="👾"
+                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Style="{StaticResource HoverButtonStyle}"
+                                    Text="🚀" Command="{Binding SelectEmojiCommand}" CommandParameter="🚀"
+                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Style="{StaticResource HoverButtonStyle}"
+                                    Text="⚡" Command="{Binding SelectEmojiCommand}" CommandParameter="⚡"
+                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Style="{StaticResource HoverButtonStyle}"
+                                    Text="🔥" Command="{Binding SelectEmojiCommand}" CommandParameter="🔥"
+                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Style="{StaticResource HoverButtonStyle}"
+                                    Text="💎" Command="{Binding SelectEmojiCommand}" CommandParameter="💎"
+                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Style="{StaticResource HoverButtonStyle}"
+                                    Text="🎮" Command="{Binding SelectEmojiCommand}" CommandParameter="🎮"
+                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Style="{StaticResource HoverButtonStyle}"
+                                    Text="🎨" Command="{Binding SelectEmojiCommand}" CommandParameter="🎨"
+                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
                         </FlexLayout>
                     </VerticalStackLayout>
 
@@ -99,11 +124,13 @@
                     <Button Text="Save Profile"
                             Command="{Binding SaveProfileCommand}"
                             Margin="0,10,0,0"
-                            HorizontalOptions="Fill"/>
+                            HorizontalOptions="Fill"
+                            Style="{StaticResource HoverButtonStyle}" />
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Profile Preview -->
+
+            <!-- PROFILE PREVIEW -->
             <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
                     Stroke="{DynamicResource BorderColor}"
                     StrokeThickness="1"
@@ -133,14 +160,16 @@
                         </Border.StrokeShape>
 
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="15">
+
                             <!-- Avatar -->
                             <Border Grid.Column="0"
                                     WidthRequest="60"
                                     HeightRequest="60"
-                                    BackgroundColor="{DynamicResource PrimaryColor}"
+                                    Padding="0"
+                                    Background="{DynamicResource PrimaryColor}"
                                     VerticalOptions="Start">
                                 <Border.StrokeShape>
-                                    <RoundRectangle CornerRadius="30"/>
+                                    <RoundRectangle CornerRadius="10"/>
                                 </Border.StrokeShape>
                                 <Label Text="{Binding SelectedEmoji}"
                                        FontSize="32"
@@ -149,10 +178,9 @@
                             </Border>
 
                             <!-- Info -->
-                            <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center" Padding="10">
                                 <Label Text="{Binding DisplayName, TargetNullValue='Your Name'}"
-                                       FontSize="18"
-                                       FontAttributes="Bold"                                 
+                                       FontSize="18" FontAttributes="Bold"
                                        TextColor="{DynamicResource PrimaryTextColor}"/>
 
                                 <Label Text="{Binding StatusMessage, TargetNullValue='Your status message...'}"
@@ -163,12 +191,14 @@
                                        FontSize="12"
                                        TextColor="{DynamicResource SuccessColor}"/>
                             </VerticalStackLayout>
+
                         </Grid>
                     </Border>
                 </VerticalStackLayout>
             </Border>
 
-            <!-- User ID Info -->
+
+            <!-- USER ID INFO -->
             <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
                     Stroke="{DynamicResource BorderColor}"
                     StrokeThickness="1"
@@ -181,25 +211,31 @@
                            FontAttributes="Bold"
                            TextColor="{DynamicResource PrimaryTextColor}"/>
 
-                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto"
-                          RowSpacing="8" ColumnSpacing="10">
-                        <Label Grid.Row="0" Grid.Column="0" 
-                               Text="User ID:"
+                    <Grid ColumnDefinitions="Auto,*"
+                          RowDefinitions="Auto,Auto"
+                          RowSpacing="8"
+                          ColumnSpacing="10">
+
+                        <Label Text="User ID:"
+                               Grid.Row="0" Grid.Column="0"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
-                        <Label Grid.Row="0" Grid.Column="1" 
-                               Text="{Binding LocalPeerId}"
+                        <Label Text="{Binding LocalPeerId}"
+                               Grid.Row="0" Grid.Column="1"
                                TextColor="{DynamicResource PrimaryTextColor}"/>
 
-                        <Label Grid.Row="1" Grid.Column="0" 
-                               Text="Account Created:"
+                        <Label Text="Account Created:"
+                               Grid.Row="1" Grid.Column="0"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
-                        <Label Grid.Row="1" Grid.Column="1" 
-                               Text="{Binding AccountCreated}"
+                        <Label Text="{Binding AccountCreated}"
+                               Grid.Row="1" Grid.Column="1"
                                TextColor="{DynamicResource PrimaryTextColor}"/>
                     </Grid>
+
                 </VerticalStackLayout>
+
             </Border>
 
         </VerticalStackLayout>
     </ScrollView>
+    
 </ContentPage>

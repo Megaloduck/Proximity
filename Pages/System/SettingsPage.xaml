@@ -58,8 +58,7 @@
                                VerticalOptions="Center"
                                HorizontalOptions="Start"
                                TextColor="{DynamicResource PrimaryTextColor}"/>
-                        <Switch IsToggled="{Binding IsDarkMode}"
-                                HorizontalOptions="End"/>
+                        <Switch IsToggled="{Binding IsDarkMode}" OnColor="{DynamicResource PrimaryColor}" ThumbColor="White" />
                     </HorizontalStackLayout>
                 </VerticalStackLayout>
             </Border>
