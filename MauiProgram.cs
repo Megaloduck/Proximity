@@ -61,9 +61,11 @@ namespace Proximity
             builder.Services.AddTransient<ContactsPage>();
             builder.Services.AddTransient<ContactsPageModel>();
             builder.Services.AddTransient<RoomsPage>();
-            builder.Services.AddTransient<AuditoriumPage>();
+            builder.Services.AddTransient<RoomsPageModel>();
             builder.Services.AddTransient<BroadcastsPage>();
-
+            builder.Services.AddTransient<BroadcastsPageModel>();
+            builder.Services.AddTransient<AuditoriumPage>();
+            builder.Services.AddTransient<AuditoriumPageModel>();
 
             // System Pages            
             builder.Services.AddTransient<ProfilePage>();
