@@ -13,17 +13,18 @@ namespace Proximity.PageModels
 
         private readonly DiscoveryService _discoveryService;
 
-        // Profile Properties
+        // Profile Properties with proper change notification
         private string _displayName;
         public string DisplayName
         {
             get => _displayName;
             set
             {
-                if (_displayName != value && value?.Length <= 30)
+                if (_displayName != value && (value == null || value.Length <= 30))
                 {
                     _displayName = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(DisplayNameLength));
                 }
             }
         }
@@ -34,10 +35,11 @@ namespace Proximity.PageModels
             get => _statusMessage;
             set
             {
-                if (_statusMessage != value && value?.Length <= 60)
+                if (_statusMessage != value && (value == null || value.Length <= 60))
                 {
                     _statusMessage = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(StatusMessageLength));
                 }
             }
         }
@@ -46,8 +48,16 @@ namespace Proximity.PageModels
         public string SelectedEmoji
         {
             get => _selectedEmoji;
-            set { _selectedEmoji = value; OnPropertyChanged(); }
+            set
+            {
+                _selectedEmoji = value;
+                OnPropertyChanged();
+            }
         }
+
+        // Computed properties for character counts
+        public int DisplayNameLength => DisplayName?.Length ?? 0;
+        public int StatusMessageLength => StatusMessage?.Length ?? 0;
 
         // User Info
         public string LocalPeerId => _discoveryService?.MyDeviceId ?? "Unknown";
@@ -65,7 +75,12 @@ namespace Proximity.PageModels
             LoadProfile();
 
             // Initialize commands
-            SelectEmojiCommand = new Command<string>((emoji) => SelectedEmoji = emoji);
+            SelectEmojiCommand = new Command<string>((emoji) =>
+            {
+                SelectedEmoji = emoji;
+                System.Diagnostics.Debug.WriteLine($"ProfilePageModel: Emoji selected: {emoji}");
+            });
+
             SaveProfileCommand = new Command(async () => await SaveProfileAsync());
         }
 
@@ -80,6 +95,8 @@ namespace Proximity.PageModels
             {
                 Preferences.Set("AccountCreatedDate", DateTime.Now.ToString("yyyy-MM-dd"));
             }
+
+            System.Diagnostics.Debug.WriteLine($"ProfilePageModel: Loaded profile - Name: {DisplayName}, Emoji: {SelectedEmoji}");
         }
 
         private async Task SaveProfileAsync()
@@ -101,17 +118,26 @@ namespace Proximity.PageModels
                 Preferences.Set("ProfileStatusMessage", StatusMessage ?? "");
                 Preferences.Set("ProfileEmoji", SelectedEmoji);
 
-                // Update discovery service name if needed
-                // Note: This would require restarting discovery to broadcast new name
-                // For now, just save to preferences
+                // Update discovery service name to broadcast new name
+                if (_discoveryService != null)
+                {
+                    _discoveryService.LocalName = DisplayName;
+                    // Update preferences that DiscoveryService uses
+                    Preferences.Set("username", DisplayName);
+                    Preferences.Set("user_avatar", SelectedEmoji);
+                    Preferences.Set("user_status", StatusMessage ?? "");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"ProfilePageModel: Saved profile - Name: {DisplayName}, Emoji: {SelectedEmoji}");
 
                 await Application.Current.MainPage.DisplayAlert(
                     "Success",
-                    "Profile saved successfully!",
+                    "Profile saved successfully! Other users will now see your updated information.",
                     "OK");
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"ProfilePageModel: Save error - {ex.Message}");
                 await Application.Current.MainPage.DisplayAlert(
                     "Save Error",
                     ex.Message,
@@ -122,6 +148,7 @@ namespace Proximity.PageModels
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            System.Diagnostics.Debug.WriteLine($"ProfilePageModel: Property changed - {name}");
         }
     }
 }

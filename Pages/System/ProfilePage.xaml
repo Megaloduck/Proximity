@@ -50,10 +50,11 @@
                         <Label Text="Display Name"
                                FontSize="14"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
-                        <Entry Text="{Binding DisplayName}"
+                        <Entry Text="{Binding DisplayName, Mode=TwoWay}"
                                Placeholder="Enter your display name"
                                FontSize="16"
-                               MaxLength="30"/>
+                               MaxLength="30"
+                               TextChanged="OnProfileChanged"/>
                         <Label Text="{Binding DisplayName.Length, StringFormat='{0}/30 characters'}"
                                FontSize="11"
                                TextColor="{DynamicResource TertiaryTextColor}"/>
@@ -64,10 +65,11 @@
                         <Label Text="Status Message"
                                FontSize="14"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
-                        <Entry Text="{Binding StatusMessage}"
+                        <Entry Text="{Binding StatusMessage, Mode=TwoWay}"
                                Placeholder="What's on your mind?"
                                FontSize="14"
-                               MaxLength="60"/>
+                               MaxLength="60"
+                               TextChanged="OnProfileChanged"/>
                         <Label Text="{Binding StatusMessage.Length, StringFormat='{0}/60 characters'}"
                                FontSize="11"
                                TextColor="{DynamicResource TertiaryTextColor}"/>
@@ -79,18 +81,18 @@
                                FontSize="14"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
 
-                        <HorizontalStackLayout Spacing="10" >
-                            <Button Text="😀" Command="{Binding SelectEmojiCommand}" CommandParameter="😀" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="😎" Command="{Binding SelectEmojiCommand}" CommandParameter="😎" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="🤖" Command="{Binding SelectEmojiCommand}" CommandParameter="🤖" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="👾" Command="{Binding SelectEmojiCommand}" CommandParameter="👾" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="🚀" Command="{Binding SelectEmojiCommand}" CommandParameter="🚀" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="⚡" Command="{Binding SelectEmojiCommand}" CommandParameter="⚡" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="🔥" Command="{Binding SelectEmojiCommand}" CommandParameter="🔥" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="💎" Command="{Binding SelectEmojiCommand}" CommandParameter="💎" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="🎮" Command="{Binding SelectEmojiCommand}" CommandParameter="🎮" WidthRequest="50" HeightRequest="50"/>
-                            <Button Text="🎨" Command="{Binding SelectEmojiCommand}" CommandParameter="🎨" WidthRequest="50" HeightRequest="50"/>
-                        </HorizontalStackLayout>
+                        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignItems="Start">
+                            <Button Text="😀" Command="{Binding SelectEmojiCommand}" CommandParameter="😀" WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Text="😎" Command="{Binding SelectEmojiCommand}" CommandParameter="😎" WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Text="🤖" Command="{Binding SelectEmojiCommand}" CommandParameter="🤖" WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Text="👾" Command="{Binding SelectEmojiCommand}" CommandParameter="👾" WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Text="🚀" Command="{Binding SelectEmojiCommand}" CommandParameter="🚀" WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Text="⚡" Command="{Binding SelectEmojiCommand}" CommandParameter="⚡" WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Text="🔥" Command="{Binding SelectEmojiCommand}" CommandParameter="🔥" WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Text="💎" Command="{Binding SelectEmojiCommand}" CommandParameter="💎" WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Text="🎮" Command="{Binding SelectEmojiCommand}" CommandParameter="🎮" WidthRequest="50" HeightRequest="50" Margin="2"/>
+                            <Button Text="🎨" Command="{Binding SelectEmojiCommand}" CommandParameter="🎨" WidthRequest="50" HeightRequest="50" Margin="2"/>
+                        </FlexLayout>
                     </VerticalStackLayout>
 
                     <!-- Save Button -->
@@ -111,7 +113,7 @@
                 </Border.StrokeShape>
 
                 <VerticalStackLayout Spacing="15">
-                    <Label Text="Preview"
+                    <Label Text="Live Preview"
                            FontSize="20"
                            FontAttributes="Bold"
                            TextColor="{DynamicResource PrimaryTextColor}"/>
@@ -148,12 +150,12 @@
 
                             <!-- Info -->
                             <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
-                                <Label Text="{Binding DisplayName}"
+                                <Label Text="{Binding DisplayName, TargetNullValue='Your Name'}"
                                        FontSize="18"
-                                       FontAttributes="Bold"
+                                       FontAttributes="Bold"                                 
                                        TextColor="{DynamicResource PrimaryTextColor}"/>
 
-                                <Label Text="{Binding StatusMessage}"
+                                <Label Text="{Binding StatusMessage, TargetNullValue='Your status message...'}"
                                        FontSize="14"
                                        TextColor="{DynamicResource SecondaryTextColor}"/>
 
