@@ -1,159 +1,272 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Windows.Input;
-using Proximity.Services;
-using Proximity.Pages.MainMenu;
-using Proximity.Pages.Tools;
+﻿using Proximity.Pages.MainMenu;
 using Proximity.Pages.System;
+using Proximity.Pages.Tools;
+using Proximity.Services;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Windows.Input;
 
-namespace Proximity.PageModels
+namespace Proximity.PageModels;
+
+public class SidebarPageModel : INotifyPropertyChanged
 {
-    public class SidebarPageModel : BasePageModel
+    private bool _isDarkMode;
+    public Action<Page> NavigateAction { get; set; }
+
+    public SidebarPageModel()
     {
-        private readonly ThemeService _themeService;
+        // Load dark mode preference
+        _isDarkMode = Preferences.Get("dark_mode", false);
+        ApplyTheme();
 
-        // Used by SidebarPage.xaml.cs to navigate content
-        public Action<Page> NavigateAction { get; set; }
+        BuildNavigationCommands();
+    }
 
-        public SidebarPageModel()
+    private void BuildNavigationCommands()
+    {
+        // Main Menu
+        NavigateToDashboardCommand = new Command(() =>
         {
-            _themeService = ThemeService.Instance;
-
-            BuildNavigationCommands();
-            HookThemeUpdates();
-        }
-
-        // -------------------------------
-        // THEME BINDING
-        // -------------------------------
-        public bool IsDarkMode
-        {
-            get => _themeService.IsDarkMode;
-            set
+            try
             {
-                if (_themeService.IsDarkMode != value)
+                var discoveryService = GetService<DiscoveryService>();
+                var chatService = GetService<ChatService>();
+                var voiceService = GetService<VoiceService>();
+
+                if (discoveryService != null && chatService != null && voiceService != null)
                 {
-                    _themeService.IsDarkMode = value;
-                    OnPropertyChanged();
+                    var page = new DashboardPage(discoveryService, chatService, voiceService);
+                    NavigateAction?.Invoke(page);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("SidebarPageModel: Services not available for Dashboard");
                 }
             }
-        }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SidebarPageModel NavigateToDashboard error: {ex.Message}");
+            }
+        });
 
-        private void HookThemeUpdates()
+        NavigateToDiscoverCommand = new Command(() =>
         {
-            _themeService.PropertyChanged += (s, e) =>
+            try
             {
-                if (e.PropertyName == nameof(ThemeService.IsDarkMode))
-                    OnPropertyChanged(nameof(IsDarkMode));
-            };
-        }
+                var discoveryService = GetService<DiscoveryService>();
+                var chatService = GetService<ChatService>();
 
-        // -------------------------------
-        // COMMANDS
-        // -------------------------------
-        public ICommand NavigateToDashboardCommand { get; private set; }
-        public ICommand NavigateToDiscoverCommand { get; private set; }
+                if (discoveryService != null && chatService != null)
+                {
+                    var page = new DiscoverPage(discoveryService, chatService);
+                    NavigateAction?.Invoke(page);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("SidebarPageModel: Services not available for Discover");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SidebarPageModel NavigateToDiscover error: {ex.Message}");
+            }
+        });
 
-        public ICommand NavigateToContactsCommand { get; private set; }
-        public ICommand NavigateToRoomsCommand { get; private set; }
-        public ICommand NavigateToAuditoriumCommand { get; private set; }
-        public ICommand NavigateToBroadcastsCommand { get; private set; }
-
-        public ICommand NavigateToProfileCommand { get; private set; }
-        public ICommand NavigateToSettingsCommand { get; private set; }
-
-        // -------------------------------
-        // BUILD COMMANDS - FIXED TO USE DI
-        // -------------------------------
-        private void BuildNavigationCommands()
+        // Features
+        NavigateToContactsCommand = new Command(() =>
         {
-            // Main Menu
-            NavigateToDashboardCommand = new Command(() =>
+            try
             {
-                var app = Application.Current as App;
-                var services = app?.Handler?.MauiContext?.Services;
+                // Contacts page requires a peer selection
+                // Navigate to Discover page instead where users can select a peer to chat with
+                var discoveryService = GetService<DiscoveryService>();
+                var chatService = GetService<ChatService>();
 
-                if (services != null)
+                if (discoveryService != null && chatService != null)
                 {
-                    var discoveryService = services.GetService(typeof(DiscoveryService)) as DiscoveryService;
-                    var chatService = services.GetService(typeof(ChatService)) as ChatService;
-                    var voiceService = services.GetService(typeof(VoiceService)) as VoiceService;
+                    var page = new DiscoverPage(discoveryService, chatService);
+                    NavigateAction?.Invoke(page);
 
-                    if (discoveryService != null && chatService != null && voiceService != null)
+                    // Show a message to the user
+                    MainThread.BeginInvokeOnMainThread(async () =>
                     {
-                        NavigateAction?.Invoke(new DashboardPage(discoveryService, chatService, voiceService));
-                    }
+                        await Application.Current?.MainPage?.DisplayAlert(
+                            "Select a Peer",
+                            "Please select a peer from the Discover page to start chatting.",
+                            "OK"
+                        );
+                    });
                 }
-            });
-
-            NavigateToDiscoverCommand = new Command(() =>
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("SidebarPageModel: Services not available for Contacts");
+                }
+            }
+            catch (Exception ex)
             {
-                var app = Application.Current as App;
-                var services = app?.Handler?.MauiContext?.Services;
+                System.Diagnostics.Debug.WriteLine($"SidebarPageModel NavigateToContacts error: {ex.Message}");
+            }
+        });
 
-                if (services != null)
-                {
-                    var discoveryService = services.GetService(typeof(DiscoveryService)) as DiscoveryService;
-                    var chatService = services.GetService(typeof(ChatService)) as ChatService;
-
-                    if (discoveryService != null && chatService != null)
-                    {
-                        NavigateAction?.Invoke(new DiscoverPage(discoveryService, chatService));
-                    }
-                }
-            });
-
-            // Tools
-            NavigateToContactsCommand = new Command(() =>
+        NavigateToRoomsCommand = new Command(() =>
+        {
+            try
             {
-                var app = Application.Current as App;
-                var services = app?.Handler?.MauiContext?.Services;
+                var roomService = GetService<RoomService>();
+                var discoveryService = GetService<DiscoveryService>();
 
-                if (services != null)
+                if (roomService != null && discoveryService != null)
                 {
-                    var chatService = services.GetService(typeof(ChatService)) as ChatService;
-                    if (chatService != null)
-                    {
-                        NavigateAction?.Invoke(new ContactsPage(null, chatService));
-                    }
+                    var page = new RoomsPage(roomService, discoveryService);
+                    NavigateAction?.Invoke(page);
                 }
-            });
-
-            NavigateToRoomsCommand = new Command(() => NavigateAction?.Invoke(new RoomsPage()));
-            NavigateToAuditoriumCommand = new Command(() => NavigateAction?.Invoke(new AuditoriumPage()));
-            NavigateToBroadcastsCommand = new Command(() => NavigateAction?.Invoke(new BroadcastsPage()));
-
-            // System
-            NavigateToProfileCommand = new Command(() =>
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("SidebarPageModel: Services not available for Rooms");
+                }
+            }
+            catch (Exception ex)
             {
-                var app = Application.Current as App;
-                var services = app?.Handler?.MauiContext?.Services; if (services != null)
-                {
-                    var discoveryService = services.GetService(typeof(DiscoveryService)) as DiscoveryService;
-                    if (discoveryService != null)
-                    {
-                        NavigateAction?.Invoke(new ProfilePage(discoveryService));
-                    }
-                }
-            });
+                System.Diagnostics.Debug.WriteLine($"SidebarPageModel NavigateToRooms error: {ex.Message}");
+            }
+        });
 
-            NavigateToSettingsCommand = new Command(() =>
+        NavigateToBroadcastsCommand = new Command(() =>
+        {
+            try
             {
-                var app = Application.Current as App;
-                var services = app?.Handler?.MauiContext?.Services;
+                var broadcastService = GetService<BroadcastService>();
+                var discoveryService = GetService<DiscoveryService>();
 
-                if (services != null)
+                if (broadcastService != null && discoveryService != null)
                 {
-                    var discoveryService = services.GetService(typeof(DiscoveryService)) as DiscoveryService;
-                    var voiceService = services.GetService(typeof(VoiceService)) as VoiceService;
-
-                    if (discoveryService != null)
-                    {
-                        NavigateAction?.Invoke(new SettingsPage());
-                    }
+                    var page = new BroadcastsPage(broadcastService, discoveryService);
+                    NavigateAction?.Invoke(page);
                 }
-            });
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("SidebarPageModel: Services not available for Broadcasts");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SidebarPageModel NavigateToBroadcasts error: {ex.Message}");
+            }
+        });
+
+        NavigateToAuditoriumCommand = new Command(() =>
+        {
+            try
+            {
+                var auditoriumService = GetService<AuditoriumService>();
+
+                if (auditoriumService != null)
+                {
+                    var page = new AuditoriumPage(auditoriumService);
+                    NavigateAction?.Invoke(page);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("SidebarPageModel: Services not available for Auditorium");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SidebarPageModel NavigateToAuditorium error: {ex.Message}");
+            }
+        });
+
+        // System
+        NavigateToProfileCommand = new Command(() =>
+        {
+            try
+            {
+                var discoveryService = GetService<DiscoveryService>();
+
+                if (discoveryService != null)
+                {
+                    var page = new ProfilePage(discoveryService);
+                    NavigateAction?.Invoke(page);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("SidebarPageModel: Services not available for Profile");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SidebarPageModel NavigateToProfile error: {ex.Message}");
+            }
+        });
+
+        NavigateToSettingsCommand = new Command(() =>
+        {
+            try
+            {
+                var discoveryService = GetService<DiscoveryService>();
+                var voiceService = GetService<VoiceService>();
+
+                if (discoveryService != null && voiceService != null)
+                {
+                    var page = new SettingsPage(discoveryService, voiceService);
+                    NavigateAction?.Invoke(page);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("SidebarPageModel: Services not available for Settings");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SidebarPageModel NavigateToSettings error: {ex.Message}");
+            }
+        });
+    }
+
+    private T GetService<T>() where T : class
+    {
+        try
+        {
+            return Application.Current?.Handler?.MauiContext?.Services?.GetService<T>();
         }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"SidebarPageModel GetService<{typeof(T).Name}> error: {ex.Message}");
+            return null;
+        }
+    }
+
+    private void ApplyTheme()
+    {
+        Application.Current.UserAppTheme = _isDarkMode ? AppTheme.Dark : AppTheme.Light;
+    }
+
+    // Properties
+    public bool IsDarkMode
+    {
+        get => _isDarkMode;
+        set
+        {
+            _isDarkMode = value;
+            OnPropertyChanged();
+            Preferences.Set("dark_mode", value);
+            ApplyTheme();
+        }
+    }
+
+    // Commands
+    public ICommand NavigateToDashboardCommand { get; private set; }
+    public ICommand NavigateToDiscoverCommand { get; private set; }
+    public ICommand NavigateToContactsCommand { get; private set; }
+    public ICommand NavigateToRoomsCommand { get; private set; }
+    public ICommand NavigateToBroadcastsCommand { get; private set; }
+    public ICommand NavigateToAuditoriumCommand { get; private set; }
+    public ICommand NavigateToProfileCommand { get; private set; }
+    public ICommand NavigateToSettingsCommand { get; private set; }
+
+    public event PropertyChangedEventHandler PropertyChanged;
+    protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

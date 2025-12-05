@@ -13,7 +13,7 @@ public class ContactsPageModel : INotifyPropertyChanged
     private readonly ChatService _chatService;
     private VoiceService _voiceService;
     private readonly ObservableCollection<ChatMessage> _messages = new();
-    private System.Timers.Timer _callDurationTimer; // Changed from readonly
+    private System.Timers.Timer _callDurationTimer;
 
     private string _messageText;
     private bool _isVoiceActive;
@@ -24,8 +24,8 @@ public class ContactsPageModel : INotifyPropertyChanged
 
     public ContactsPageModel(PeerInfo peer, ChatService chatService)
     {
-        _peer = peer;
-        _chatService = chatService;
+        _peer = peer ?? throw new ArgumentNullException(nameof(peer));
+        _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
 
         InitializeCommands();
         LoadMessages();
@@ -47,21 +47,60 @@ public class ContactsPageModel : INotifyPropertyChanged
 
     private void LoadMessages()
     {
-        var history = _chatService.GetChatHistory(_peer.PeerId);
-        foreach (var msg in history)
+        try
         {
-            _messages.Add(msg);
+            if (_peer == null || _chatService == null)
+            {
+                System.Diagnostics.Debug.WriteLine("ContactsPageModel: Peer or ChatService is null");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(_peer.PeerId))
+            {
+                System.Diagnostics.Debug.WriteLine("ContactsPageModel: PeerId is null or empty");
+                return;
+            }
+
+            var history = _chatService.GetChatHistory(_peer.PeerId);
+
+            if (history != null)
+            {
+                foreach (var msg in history)
+                {
+                    _messages.Add(msg);
+                }
+                System.Diagnostics.Debug.WriteLine($"ContactsPageModel: Loaded {history.Count} messages");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("ContactsPageModel: History is null");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ContactsPageModel LoadMessages error: {ex.Message}");
+            // Don't throw - just log and continue with empty message list
         }
     }
 
     private void OnMessageReceived(object sender, ChatMessage message)
     {
-        if (message.SenderId == _peer.PeerId || message.ReceiverId == _peer.PeerId)
+        try
         {
-            MainThread.BeginInvokeOnMainThread(() =>
+            if (message == null || _peer == null)
+                return;
+
+            if (message.SenderId == _peer.PeerId || message.ReceiverId == _peer.PeerId)
             {
-                _messages.Add(message);
-            });
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    _messages.Add(message);
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ContactsPageModel OnMessageReceived error: {ex.Message}");
         }
     }
 
@@ -69,85 +108,111 @@ public class ContactsPageModel : INotifyPropertyChanged
     {
         if (string.IsNullOrWhiteSpace(MessageText)) return;
 
-        var message = new ChatMessage
+        try
         {
-            MessageId = Guid.NewGuid().ToString(),
-            SenderId = _chatService.LocalPeerId,
-            SenderName = Preferences.Get("username", "Me"),
-            ReceiverId = _peer.PeerId,
-            ReceiverName = _peer.Name,
-            Content = MessageText,
-            Timestamp = DateTime.Now,
-            IsSentByMe = true,
-            IsDelivered = false
-        };
+            var message = new ChatMessage
+            {
+                MessageId = Guid.NewGuid().ToString(),
+                SenderId = _chatService.LocalPeerId,
+                SenderName = Preferences.Get("username", "Me"),
+                ReceiverId = _peer.PeerId,
+                ReceiverName = _peer.Name,
+                Content = MessageText,
+                Timestamp = DateTime.Now,
+                IsSentByMe = true,
+                IsDelivered = false
+            };
 
-        _messages.Add(message);
-        await _chatService.SendMessageAsync(_peer, MessageText);
+            _messages.Add(message);
+            await _chatService.SendMessageAsync(_peer, MessageText);
 
-        MessageText = string.Empty;
+            MessageText = string.Empty;
 
-        // Simulate delivery confirmation
-        await Task.Delay(500);
-        message.IsDelivered = true;
+            // Simulate delivery confirmation
+            await Task.Delay(500);
+            message.IsDelivered = true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ContactsPageModel SendMessage error: {ex.Message}");
+            // Show error to user
+            await Application.Current?.MainPage?.DisplayAlert("Error", "Failed to send message", "OK");
+        }
     }
 
     private async Task ToggleVoice()
     {
-        // Get VoiceService from DI if not already set
-        if (_voiceService == null)
+        try
         {
-            try
+            // Get VoiceService from DI if not already set
+            if (_voiceService == null)
             {
-                _voiceService = Application.Current?.Handler?.MauiContext?.Services?.GetService<VoiceService>();
+                try
+                {
+                    _voiceService = Application.Current?.Handler?.MauiContext?.Services?.GetService<VoiceService>();
+
+                    if (_voiceService == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("ContactsPageModel: Could not get VoiceService from DI");
+                        await Application.Current?.MainPage?.DisplayAlert("Error", "Voice service not available", "OK");
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ContactsPageModel: VoiceService DI error - {ex.Message}");
+                    return;
+                }
             }
-            catch
+
+            IsVoiceActive = !IsVoiceActive;
+
+            if (IsVoiceActive)
             {
-                System.Diagnostics.Debug.WriteLine("ContactsPageModel: Could not get VoiceService");
-                return;
-            }
-        }
+                _callStartTime = DateTime.Now;
+                _callDurationTimer.Start();
 
-        IsVoiceActive = !IsVoiceActive;
-
-        if (IsVoiceActive)
-        {
-            _callStartTime = DateTime.Now;
-            _callDurationTimer.Start();
-
-            if (_voiceService != null)
-            {
                 await _voiceService.StartTransmittingAsync();
             }
-        }
-        else
-        {
-            _callDurationTimer.Stop();
-            CallDuration = "00:00";
-
-            if (_voiceService != null)
+            else
             {
+                _callDurationTimer.Stop();
+                CallDuration = "00:00";
+
                 _voiceService.StopTransmitting();
             }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ContactsPageModel ToggleVoice error: {ex.Message}");
+            IsVoiceActive = false;
+            _callDurationTimer?.Stop();
         }
     }
 
     private void UpdateCallDuration(object sender, System.Timers.ElapsedEventArgs e)
     {
-        var duration = DateTime.Now - _callStartTime;
-        MainThread.BeginInvokeOnMainThread(() =>
+        try
         {
-            CallDuration = $"{duration.Minutes:D2}:{duration.Seconds:D2}";
-        });
+            var duration = DateTime.Now - _callStartTime;
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                CallDuration = $"{duration.Minutes:D2}:{duration.Seconds:D2}";
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ContactsPageModel UpdateCallDuration error: {ex.Message}");
+        }
     }
 
     // Properties
     public ObservableCollection<ChatMessage> Messages => _messages;
 
-    public string PeerName => _peer.Name;
-    public string PeerAvatar => _peer.Avatar ?? "👤";
-    public string PeerStatus => _peer.IsOnline ? "🟢 Online" : "🔴 Offline";
-    public string PeerIpAddress => _peer.IpAddress;
+    public string PeerName => _peer?.Name ?? "Unknown";
+    public string PeerAvatar => _peer?.Avatar ?? "👤";
+    public string PeerStatus => _peer?.IsOnline == true ? "🟢 Online" : "🔴 Offline";
+    public string PeerIpAddress => _peer?.IpAddress ?? "Unknown";
 
     public string MessageText
     {
@@ -199,4 +264,4 @@ public class ContactsPageModel : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
-}   
+}
