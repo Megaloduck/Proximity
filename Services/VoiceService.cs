@@ -12,7 +12,7 @@ namespace Proximity.Services
 {
     public class VoiceService : IDisposable
     {
-        private const int VOICE_PORT = 9002;
+        private const int VOICE_PORT = 9003;
         private const int CAPTURE_INTERVAL_MS = 20; // 20ms chunks
         private const int JITTER_BUFFER_SIZE = 5; // Buffer 5 packets (100ms)
         private const int MAX_PACKET_SIZE = 8192; // 8KB max per packet
@@ -55,18 +55,16 @@ namespace Proximity.Services
             try
             {
                 _isTransmitting = true;
+                System.Diagnostics.Debug.WriteLine("VoiceService: Started transmitting");
 
-                // Start capturing and transmitting audio
-                await Task.Run(() =>
-                {
-                    // TODO: Implement actual audio capture and transmission
-                    System.Diagnostics.Debug.WriteLine("VoiceService: Started transmitting");
-                });
+                // TODO: Implement actual audio capture
+                await Task.CompletedTask;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"VoiceService: Start transmitting error - {ex.Message}");
                 _isTransmitting = false;
+                throw;
             }
         }
         public void StopTransmitting()

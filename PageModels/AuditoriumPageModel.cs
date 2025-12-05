@@ -10,7 +10,7 @@ namespace Proximity.PageModels;
 public class AuditoriumPageModel : INotifyPropertyChanged
 {
     private readonly AuditoriumService _auditoriumService;
-    private System.Timers.Timer _durationTimer; // Changed from readonly to allow assignment
+    private System.Timers.Timer _durationTimer; 
     private bool _isSessionActive;
     private bool _isScreenSharing;
     private bool _hasActivePresentation;
