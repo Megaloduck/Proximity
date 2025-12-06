@@ -102,6 +102,9 @@
 	  <MauiXaml Update="Pages\Tools\ContactsPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	  <MauiXaml Update="Pages\Tools\CreateRoomDialog.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="Pages\Tools\RoomsPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>

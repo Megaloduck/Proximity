@@ -29,7 +29,10 @@
                         Text="➕ Create"
                         Command="{Binding CreateRoomCommand}"
                         VerticalOptions="Center"
-                        Padding="15,8"/>
+                        Style="{StaticResource HoverButtonStyle}"
+                        Padding="20,10"
+                        FontSize="15"
+                        FontAttributes="Bold"/>
             </Grid>
         </Border>
 
@@ -48,12 +51,13 @@
                       ColumnSpacing="0">
                     <Border Grid.Column="0" 
                             Padding="15"
-                            BackgroundColor="Transparent">
+                            BackgroundColor="Transparent"
+                            StrokeThickness="0">
                         <Border.Triggers>
                             <DataTrigger TargetType="Border" 
                                        Binding="{Binding SelectedTab}" 
                                        Value="Available">
-                                <Setter Property="Stroke" Value="{DynamicResource PrimaryColor}"/>
+                                <Setter Property="BackgroundColor" Value="{DynamicResource PrimaryColor}"/>
                             </DataTrigger>
                         </Border.Triggers>
                         <Border.GestureRecognizers>
@@ -69,12 +73,13 @@
 
                     <Border Grid.Column="1" 
                             Padding="15"
-                            BackgroundColor="Transparent">
+                            BackgroundColor="Transparent"
+                            StrokeThickness="0">
                         <Border.Triggers>
                             <DataTrigger TargetType="Border" 
                                        Binding="{Binding SelectedTab}" 
                                        Value="MyRooms">
-                                <Setter Property="Stroke" Value="{DynamicResource PrimaryColor}"/>
+                                <Setter Property="BackgroundColor" Value="{DynamicResource PrimaryColor}"/>
                             </DataTrigger>
                         </Border.Triggers>
                         <Border.GestureRecognizers>
@@ -117,7 +122,7 @@
                                             WidthRequest="60"
                                             HeightRequest="60"
                                             StrokeShape="RoundRectangle 30"
-
+                                            StrokeThickness="0"
                                             BackgroundColor="{DynamicResource PrimaryColor}">
                                         <Label Text="{Binding RoomIcon, TargetNullValue='🏠'}"
                                                FontSize="32"
@@ -160,6 +165,7 @@
                                         <HorizontalStackLayout Spacing="8">
                                             <Border Padding="6,3"
                                                    BackgroundColor="{DynamicResource AccentColor}"
+                                                   StrokeThickness="0"
                                                    StrokeShape="RoundRectangle 4"
                                                    IsVisible="{Binding HasVoice}">
                                                 <Label Text="🎤 Voice"
@@ -169,6 +175,7 @@
 
                                             <Border Padding="6,3"
                                                    BackgroundColor="{DynamicResource SecondaryColor}"
+                                                   StrokeThickness="0"
                                                    StrokeShape="RoundRectangle 4"
                                                    IsVisible="{Binding HasWhiteboard}">
                                                 <Label Text="✏️ Whiteboard"
@@ -177,7 +184,8 @@
                                             </Border>
 
                                             <Border Padding="6,3"
-                                                   BackgroundColor="{DynamicResource SuccessColor}"
+                                                   BackgroundColor="{DynamicResource WarningColor}"
+                                                   StrokeThickness="0"
                                                    StrokeShape="RoundRectangle 4"
                                                    IsVisible="{Binding IsPrivate}">
                                                 <Label Text="🔒 Private"
@@ -196,6 +204,7 @@
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.JoinRoomCommand}"
                                                 CommandParameter="{Binding .}"
                                                 IsVisible="{Binding IsJoined, Converter={StaticResource InvertedBoolConverter}}"
+                                                Style="{StaticResource HoverButtonStyle}"
                                                 Padding="15,8"
                                                 MinimumWidthRequest="85"
                                                 FontSize="13"/>
@@ -215,6 +224,7 @@
                                                 Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenRoomCommand}"
                                                 CommandParameter="{Binding .}"
                                                 IsEnabled="{Binding IsJoined}"
+                                                Style="{StaticResource HoverButtonStyle}"
                                                 Padding="15,8"
                                                 MinimumWidthRequest="85"
                                                 FontSize="13"/>
