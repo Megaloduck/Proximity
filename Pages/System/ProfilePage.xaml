@@ -39,7 +39,7 @@
                     <RoundRectangle CornerRadius="12"/>
                 </Border.StrokeShape>
 
-                <VerticalStackLayout >
+                <VerticalStackLayout Spacing="15">
                     <Label Text="Customize Your Card"
                            FontSize="20"
                            FontAttributes="Bold"
@@ -54,8 +54,9 @@
                                Placeholder="Enter your display name (e.g., ricky)"
                                FontSize="16"
                                MaxLength="30"
-                               TextChanged="OnProfileChanged"/>
-                        
+                               TextChanged="OnProfileChanged"
+                               x:Name="DisplayNameEntry"/>
+
                         <Label Text="{Binding DisplayNameLength, StringFormat='{0}/30 characters'}"
                                FontSize="11"
                                TextColor="{DynamicResource TertiaryTextColor}"/>
@@ -70,52 +71,71 @@
                                Placeholder="What's on your mind? (e.g., just thinking)"
                                FontSize="14"
                                MaxLength="60"
-                               TextChanged="OnProfileChanged"/>
+                               TextChanged="OnProfileChanged"
+                               x:Name="StatusMessageEntry"/>
 
                         <Label Text="{Binding StatusMessageLength, StringFormat='{0}/60 characters'}"
                                FontSize="11"
                                TextColor="{DynamicResource TertiaryTextColor}"/>
                     </VerticalStackLayout>
 
-                    <!-- Avatar Emoji -->
+                    <!-- Avatar Emoji with RadioButtons -->
                     <VerticalStackLayout Spacing="5">
                         <Label Text="Avatar Icon"
                                FontSize="14"
                                TextColor="{DynamicResource SecondaryTextColor}"/>
 
-                        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignItems="Start">
-                            <Button Style="{StaticResource HoverButtonStyle}"
-                                    Text="😀"
-                                    Command="{Binding SelectEmojiCommand}"
-                                    CommandParameter="😀"
-                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Style="{StaticResource HoverButtonStyle}"
-                                    Text="😎" Command="{Binding SelectEmojiCommand}" CommandParameter="😎"
-                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Style="{StaticResource HoverButtonStyle}"
-                                    Text="🤖" Command="{Binding SelectEmojiCommand}" CommandParameter="🤖"
-                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Style="{StaticResource HoverButtonStyle}"
-                                    Text="👾" Command="{Binding SelectEmojiCommand}" CommandParameter="👾"
-                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Style="{StaticResource HoverButtonStyle}"
-                                    Text="🚀" Command="{Binding SelectEmojiCommand}" CommandParameter="🚀"
-                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Style="{StaticResource HoverButtonStyle}"
-                                    Text="⚡" Command="{Binding SelectEmojiCommand}" CommandParameter="⚡"
-                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Style="{StaticResource HoverButtonStyle}"
-                                    Text="🔥" Command="{Binding SelectEmojiCommand}" CommandParameter="🔥"
-                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Style="{StaticResource HoverButtonStyle}"
-                                    Text="💎" Command="{Binding SelectEmojiCommand}" CommandParameter="💎"
-                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Style="{StaticResource HoverButtonStyle}"
-                                    Text="🎮" Command="{Binding SelectEmojiCommand}" CommandParameter="🎮"
-                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
-                            <Button Style="{StaticResource HoverButtonStyle}"
-                                    Text="🎨" Command="{Binding SelectEmojiCommand}" CommandParameter="🎨"
-                                    WidthRequest="50" HeightRequest="50" Margin="2"/>
+                        <FlexLayout Wrap="Wrap" JustifyContent="Start" AlignItems="Start" x:Name="EmojiSelector">
+                            <RadioButton Content="😀" 
+                                         Value="😀"
+                                         GroupName="EmojiGroup"
+                                         CheckedChanged="OnEmojiChecked"
+                                         Style="{StaticResource EmojiRadioButtonStyle}"/>
+                            <RadioButton Content="😎" 
+                                         Value="😎"
+                                         GroupName="EmojiGroup"
+                                         CheckedChanged="OnEmojiChecked"
+                                         Style="{StaticResource EmojiRadioButtonStyle}"/>
+                            <RadioButton Content="🤖" 
+                                         Value="🤖"
+                                         GroupName="EmojiGroup"
+                                         CheckedChanged="OnEmojiChecked"
+                                         Style="{StaticResource EmojiRadioButtonStyle}"/>
+                            <RadioButton Content="👾" 
+                                         Value="👾"
+                                         GroupName="EmojiGroup"
+                                         CheckedChanged="OnEmojiChecked"
+                                         Style="{StaticResource EmojiRadioButtonStyle}"/>
+                            <RadioButton Content="🚀" 
+                                         Value="🚀"
+                                         GroupName="EmojiGroup"
+                                         CheckedChanged="OnEmojiChecked"
+                                         Style="{StaticResource EmojiRadioButtonStyle}"/>
+                            <RadioButton Content="⚡" 
+                                         Value="⚡"
+                                         GroupName="EmojiGroup"
+                                         CheckedChanged="OnEmojiChecked"
+                                         Style="{StaticResource EmojiRadioButtonStyle}"/>
+                            <RadioButton Content="🔥" 
+                                         Value="🔥"
+                                         GroupName="EmojiGroup"
+                                         CheckedChanged="OnEmojiChecked"
+                                         Style="{StaticResource EmojiRadioButtonStyle}"/>
+                            <RadioButton Content="💎" 
+                                         Value="💎"
+                                         GroupName="EmojiGroup"
+                                         CheckedChanged="OnEmojiChecked"
+                                         Style="{StaticResource EmojiRadioButtonStyle}"/>
+                            <RadioButton Content="🎮" 
+                                         Value="🎮"
+                                         GroupName="EmojiGroup"
+                                         CheckedChanged="OnEmojiChecked"
+                                         Style="{StaticResource EmojiRadioButtonStyle}"/>
+                            <RadioButton Content="🎨" 
+                                         Value="🎨"
+                                         GroupName="EmojiGroup"
+                                         CheckedChanged="OnEmojiChecked"
+                                         Style="{StaticResource EmojiRadioButtonStyle}"/>
                         </FlexLayout>
                     </VerticalStackLayout>
 
@@ -128,33 +148,31 @@
                 </VerticalStackLayout>
             </Border>
 
-
-            <!-- PROFILE PREVIEW -->
             <!-- PROFILE PREVIEW -->
             <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
-        Stroke="{DynamicResource BorderColor}"
-        StrokeThickness="1"
-        Padding="20">
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1"
+                    Padding="20">
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="12"/>
                 </Border.StrokeShape>
 
                 <VerticalStackLayout Spacing="15">
                     <Label Text="Live Preview"
-               FontSize="20"
-               FontAttributes="Bold"
-               TextColor="{DynamicResource PrimaryTextColor}"/>
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="{DynamicResource PrimaryTextColor}"/>
 
                     <Label Text="This is how your card will appear in the Discover page:"
-               FontSize="13"
-               TextColor="{DynamicResource SecondaryTextColor}"/>
+                           FontSize="13"
+                           TextColor="{DynamicResource SecondaryTextColor}"/>
 
                     <!-- Preview Card -->
                     <Border BackgroundColor="{DynamicResource PageBackgroundColor}"
-                Stroke="{DynamicResource PrimaryColor}"
-                StrokeThickness="2"
-                Padding="15"
-                Margin="0,10,0,0">
+                            Stroke="{DynamicResource PrimaryColor}"
+                            StrokeThickness="2"
+                            Padding="15"
+                            Margin="0,10,0,0">
                         <Border.StrokeShape>
                             <RoundRectangle CornerRadius="8"/>
                         </Border.StrokeShape>
@@ -163,35 +181,39 @@
 
                             <!-- Avatar -->
                             <Border Grid.Column="0"
-                        WidthRequest="60"
-                        HeightRequest="60"
-                        Padding="0"
-                        Background="{DynamicResource PrimaryColor}"
-                        VerticalOptions="Start">
+                                    WidthRequest="60"
+                                    HeightRequest="60"
+                                    Padding="0"
+                                    Background="{DynamicResource PrimaryColor}"
+                                    VerticalOptions="Start">
                                 <Border.StrokeShape>
                                     <RoundRectangle CornerRadius="10"/>
                                 </Border.StrokeShape>
                                 <Label x:Name="PreviewEmoji"
-                           Text="{Binding SelectedEmoji}"
-                           FontSize="32"
-                           HorizontalOptions="Center"
-                           VerticalOptions="Center"/>
+                                       Text="😀"
+                                       FontSize="32"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center"/>
                             </Border>
 
                             <!-- Info -->
                             <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
                                 <Label x:Name="PreviewName"
-                           FontSize="18" 
-                           FontAttributes="Bold"
-                           TextColor="{DynamicResource PrimaryTextColor}"/>
+                                       Text="Your Name"
+                                       FontSize="18" 
+                                       FontAttributes="Bold"
+                                       Opacity="0.5"
+                                       TextColor="{DynamicResource PrimaryTextColor}"/>
 
                                 <Label x:Name="PreviewStatus"
-                           FontSize="14"
-                           TextColor="{DynamicResource SecondaryTextColor}"/>
+                                       Text="Your status message..."
+                                       FontSize="14"
+                                       Opacity="0.5"
+                                       TextColor="{DynamicResource SecondaryTextColor}"/>
 
                                 <Label Text="🟢 Online"
-                           FontSize="12"
-                           TextColor="{DynamicResource SuccessColor}"/>
+                                       FontSize="12"
+                                       TextColor="{DynamicResource SuccessColor}"/>
                             </VerticalStackLayout>
 
                         </Grid>
@@ -199,10 +221,10 @@
 
                     <!-- Helpful hint -->
                     <Border BackgroundColor="#FFF3CD"
-                Stroke="#FFECB3"
-                StrokeThickness="1"
-                Padding="12"
-                Margin="0,5,0,0">
+                            Stroke="#FFECB3"
+                            StrokeThickness="1"
+                            Padding="12"
+                            Margin="0,5,0,0">
                         <Border.StrokeShape>
                             <RoundRectangle CornerRadius="6"/>
                         </Border.StrokeShape>
@@ -220,7 +242,6 @@
                     </Border>
                 </VerticalStackLayout>
             </Border>
-
 
             <!-- USER ID INFO -->
             <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
@@ -261,5 +282,5 @@
 
         </VerticalStackLayout>
     </ScrollView>
-    
+
 </ContentPage>

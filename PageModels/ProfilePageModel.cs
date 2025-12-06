@@ -10,7 +10,7 @@ namespace Proximity.PageModels
     public class ProfilePageModel : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
-        public event EventHandler PreviewUpdateRequested; // New event for preview updates
+        public event EventHandler PreviewUpdateRequested;
 
         private readonly DiscoveryService _discoveryService;
 
@@ -21,28 +21,60 @@ namespace Proximity.PageModels
             get => _displayName;
             set
             {
-                if (_displayName != value && (value == null || value.Length <= 30))
+                System.Diagnostics.Debug.WriteLine($"ProfilePageModel: DisplayName setter - Old: '{_displayName}', New: '{value}'");
+
+                // Allow null or values up to 30 chars
+                if (value == null || value.Length <= 30)
                 {
-                    _displayName = value;
-                    OnPropertyChanged();
-                    OnPropertyChanged(nameof(DisplayNameLength));
-                    RequestPreviewUpdate(); // Trigger preview update
+                    if (_displayName != value) // Only check if different
+                    {
+                        _displayName = value ?? string.Empty; // Normalize null to empty string
+                        OnPropertyChanged();
+                        OnPropertyChanged(nameof(DisplayNameLength));
+                        RequestPreviewUpdate();
+
+                        System.Diagnostics.Debug.WriteLine($"ProfilePageModel: DisplayName UPDATED to '{_displayName}'");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("ProfilePageModel: DisplayName NOT updated (same value)");
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"ProfilePageModel: DisplayName REJECTED (too long: {value?.Length})");
                 }
             }
         }
 
-        private string _statusMessage;
+        private string _statusMessage = string.Empty;
         public string StatusMessage
         {
             get => _statusMessage;
             set
             {
-                if (_statusMessage != value && (value == null || value.Length <= 60))
+                System.Diagnostics.Debug.WriteLine($"ProfilePageModel: StatusMessage setter - Old: '{_statusMessage}', New: '{value}'");
+
+                // Allow null or values up to 60 chars
+                if (value == null || value.Length <= 60)
                 {
-                    _statusMessage = value;
-                    OnPropertyChanged();
-                    OnPropertyChanged(nameof(StatusMessageLength));
-                    RequestPreviewUpdate(); // Trigger preview update
+                    if (_statusMessage != value)
+                    {
+                        _statusMessage = value ?? string.Empty; // Normalize null to empty string
+                        OnPropertyChanged();
+                        OnPropertyChanged(nameof(StatusMessageLength));
+                        RequestPreviewUpdate();
+
+                        System.Diagnostics.Debug.WriteLine($"ProfilePageModel: StatusMessage UPDATED to '{_statusMessage}'");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("ProfilePageModel: StatusMessage NOT updated (same value)");
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"ProfilePageModel: StatusMessage REJECTED (too long: {value?.Length})");
                 }
             }
         }
@@ -53,9 +85,13 @@ namespace Proximity.PageModels
             get => _selectedEmoji;
             set
             {
+                System.Diagnostics.Debug.WriteLine($"ProfilePageModel: SelectedEmoji setter called - Old: '{_selectedEmoji}', New: '{value}'");
+
                 _selectedEmoji = value;
                 OnPropertyChanged();
-                RequestPreviewUpdate(); // Trigger preview update
+                RequestPreviewUpdate();
+
+                System.Diagnostics.Debug.WriteLine($"ProfilePageModel: SelectedEmoji updated to '{_selectedEmoji}'");
             }
         }
 
@@ -82,7 +118,7 @@ namespace Proximity.PageModels
             SelectEmojiCommand = new Command<string>((emoji) =>
             {
                 SelectedEmoji = emoji;
-                System.Diagnostics.Debug.WriteLine($"ProfilePageModel: Emoji selected: {emoji}");
+                System.Diagnostics.Debug.WriteLine($"ProfilePageModel: Emoji selected via command: {emoji}");
             });
 
             SaveProfileCommand = new Command(async () => await SaveProfileAsync());
@@ -157,6 +193,7 @@ namespace Proximity.PageModels
 
         private void RequestPreviewUpdate()
         {
+            System.Diagnostics.Debug.WriteLine("ProfilePageModel: RequestPreviewUpdate called");
             PreviewUpdateRequested?.Invoke(this, EventArgs.Empty);
         }
 

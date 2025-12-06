@@ -5,6 +5,39 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:shimmer="clr-namespace:Syncfusion.Maui.Toolkit.Shimmer;assembly=Syncfusion.Maui.Toolkit">
 
+    <!-- Emoji RadioButton Style -->
+    <Style x:Key="EmojiRadioButtonStyle" TargetType="RadioButton">
+        <Setter Property="Margin" Value="2"/>
+        <Setter Property="ControlTemplate">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Border Background="{DynamicResource CardBackgroundColor}"
+                        Stroke="{DynamicResource BorderColor}"
+                        StrokeThickness="2"
+                        Padding="0"
+                        WidthRequest="50"
+                        HeightRequest="50">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="8"/>
+                        </Border.StrokeShape>
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border"
+                                    Binding="{Binding IsChecked, Source={RelativeSource TemplatedParent}}"
+                                    Value="True">
+                                <Setter Property="Stroke" Value="{DynamicResource PrimaryColor}"/>
+                                <Setter Property="StrokeThickness" Value="3"/>
+                                <Setter Property="Background" Value="{DynamicResource PrimaryColor}"/>
+                            </DataTrigger>
+                        </Border.Triggers>
+                        <Label Text="{TemplateBinding Content}"
+                           FontSize="24"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
     <!-- Hover Button Style -->
     <Style x:Key="HoverButtonStyle" TargetType="Button">

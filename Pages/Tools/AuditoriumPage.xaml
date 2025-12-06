@@ -3,71 +3,72 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Proximity.Pages.Tools.AuditoriumPage"
              Title="Auditorium">
+    <ScrollView>
 
-    <Grid RowDefinitions="Auto,*,Auto" Padding="20" RowSpacing="15">
+        <Grid RowDefinitions="Auto,*,Auto" Padding="20" RowSpacing="15">
 
-        <!-- Header -->
-        <Border Grid.Row="0"
+            <!-- Header -->
+            <Border Grid.Row="0"
                 BackgroundColor="{DynamicResource CardBackgroundColor}"
                 Stroke="{DynamicResource SuccessColor}"
                 StrokeThickness="2"
                 Padding="20"
                 StrokeShape="RoundRectangle 12">
 
-            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="15">
-                <Label Grid.Column="0"
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="15">
+                    <Label Grid.Column="0"
                        Text="🎤"
                        FontSize="48"
                        VerticalOptions="Center"/>
 
-                <VerticalStackLayout Grid.Column="1" Spacing="5">
-                    <Label Text="Voice Auditorium"
+                    <VerticalStackLayout Grid.Column="1" Spacing="5">
+                        <Label Text="Voice Auditorium"
                            FontSize="22"
                            FontAttributes="Bold"
                            TextColor="{DynamicResource PrimaryTextColor}"/>
-                    <Label Text="Screen sharing, voice broadcast, and collaborative spaces"
+                        <Label Text="Screen sharing, voice broadcast, and collaborative spaces"
                            FontSize="13"
                            TextColor="{DynamicResource SecondaryTextColor}"/>
-                </VerticalStackLayout>
+                    </VerticalStackLayout>
 
-                <!-- Active Session Indicator -->
-                <Border Grid.Column="2"
+                    <!-- Active Session Indicator -->
+                    <Border Grid.Column="2"
                        Padding="12,8"
                        BackgroundColor="{DynamicResource SuccessColor}"
                        StrokeShape="RoundRectangle 8"
                        IsVisible="{Binding IsSessionActive}"
                        VerticalOptions="Center">
-                    <Label Text="🔴 LIVE"
+                        <Label Text="🔴 LIVE"
                            FontSize="12"
                            FontAttributes="Bold"
                            TextColor="White"/>
-                </Border>
-            </Grid>
-        </Border>
+                    </Border>
+                </Grid>
+            </Border>
 
-        <!-- Main Content Area -->
-        <Grid Grid.Row="1" RowDefinitions="2*,*" RowSpacing="15">
+            <!-- Main Content Area -->
+            <Grid Grid.Row="1" RowDefinitions="2*,*" RowSpacing="15">
 
-            <!-- Stage/Screen Share Area -->
-            <Border Grid.Row="0"
+                <!-- Stage/Screen Share Area -->
+                <Border Grid.Row="0"
                     BackgroundColor="{DynamicResource CardBackgroundColor}"
                     Stroke="{DynamicResource BorderColor}"
                     StrokeThickness="1"
                     StrokeShape="RoundRectangle 12">
 
-                <Grid RowDefinitions="Auto,*,Auto">
-                    <!-- Stage Header -->
-                    <Grid Grid.Row="0" 
+                    <Grid RowDefinitions="Auto,*,Auto">
+                        <!-- Stage Header -->
+                        <Grid Grid.Row="0" 
                           Padding="15"
                           ColumnDefinitions="*,Auto,Auto">
-                        <Label Grid.Column="0"
+                            <Label Grid.Column="0"
                                Text="Main Stage"
                                FontSize="16"
                                FontAttributes="Bold"
                                TextColor="{DynamicResource PrimaryTextColor}"
                                VerticalOptions="Center"/>
 
-                        <Button Grid.Column="1"
+                            <Button Grid.Column="1"
                                 Text="📺 Share Screen"
                                 
                                 Command="{Binding StartScreenShareCommand}"
@@ -76,88 +77,88 @@
                                 FontSize="12"
                                 Margin="0,0,8,0"/>
 
-                        <Button Grid.Column="2"
+                            <Button Grid.Column="2"
                                 Text="🛑 Stop Sharing"
                                 Command="{Binding StopScreenShareCommand}"
                                 IsVisible="{Binding IsScreenSharing}"
                                 BackgroundColor="{DynamicResource DangerColor}"
                                 Padding="12,6"
                                 FontSize="12"/>
-                    </Grid>
+                        </Grid>
 
-                    <!-- Screen Share Display / Placeholder -->
-                    <Border Grid.Row="1" 
+                        <!-- Screen Share Display / Placeholder -->
+                        <Border Grid.Row="1" 
                             Margin="15"
                             BackgroundColor="{DynamicResource PageBackgroundColor}"
                             Stroke="{DynamicResource BorderColor}"
                             StrokeThickness="1"
                             StrokeShape="RoundRectangle 8">
-                        
-                        <Grid>
-                            <!-- Placeholder when no screen share -->
-                            <VerticalStackLayout Spacing="15"
+
+                            <Grid>
+                                <!-- Placeholder when no screen share -->
+                                <VerticalStackLayout Spacing="15"
                                             IsVisible="{Binding HasActivePresentation, Converter={StaticResource InvertedBoolConverter}}"
                                             VerticalOptions="Center"
                                             HorizontalOptions="Center">
-                                <Label Text="📺"
+                                    <Label Text="📺"
                                    FontSize="64"
                                    HorizontalOptions="Center"/>
-                                <Label Text="No active presentation"
+                                    <Label Text="No active presentation"
                                    FontSize="16"
                                    TextColor="{DynamicResource SecondaryTextColor}"
                                    HorizontalOptions="Center"/>
-                                <Label Text="Click 'Share Screen' to start broadcasting"
+                                    <Label Text="Click 'Share Screen' to start broadcasting"
                                    FontSize="13"
                                    TextColor="{DynamicResource TertiaryTextColor}"
                                    HorizontalOptions="Center"/>
-                            </VerticalStackLayout>
+                                </VerticalStackLayout>
 
-                            <!-- Active Screen Share Display -->
-                            <Grid IsVisible="{Binding HasActivePresentation}"
+                                <!-- Active Screen Share Display -->
+                                <Grid IsVisible="{Binding HasActivePresentation}"
                               Padding="15">
-                                <Image Source="{Binding ScreenSharePreview}"
+                                    <Image Source="{Binding ScreenSharePreview}"
                                    Aspect="AspectFit"/>
 
-                                <!-- Presenter Info Overlay -->
-                                <Border Padding="10"
+                                    <!-- Presenter Info Overlay -->
+                                    <Border Padding="10"
                                    BackgroundColor="#CC000000"
                                    StrokeShape="RoundRectangle 6"
                                    VerticalOptions="Start"
                                    HorizontalOptions="Start"
                                    Margin="10">
-                                    <HorizontalStackLayout Spacing="8">
-                                        <Label Text="{Binding PresenterAvatar}"
+                                        <HorizontalStackLayout Spacing="8">
+                                            <Label Text="{Binding PresenterAvatar}"
                                            FontSize="20"/>
-                                        <VerticalStackLayout Spacing="2">
-                                            <Label Text="{Binding PresenterName}"
+                                            <VerticalStackLayout Spacing="2">
+                                                <Label Text="{Binding PresenterName}"
                                                FontSize="13"
                                                FontAttributes="Bold"
                                                TextColor="White"/>
-                                            <Label Text="Presenting"
+                                                <Label Text="Presenting"
                                                FontSize="11"
                                                TextColor="White"/>
-                                        </VerticalStackLayout>
-                                    </HorizontalStackLayout>
-                                </Border>
+                                            </VerticalStackLayout>
+                                        </HorizontalStackLayout>
+                                    </Border>
+                                </Grid>
+
                             </Grid>
 
-                        </Grid>
 
+                        </Border>
 
-                    </Border>
-
-                    <!-- Stage Controls -->
-                    <Grid Grid.Row="2" 
+                        <!-- Stage Controls -->
+                        <Grid Grid.Row="2" 
                           Padding="15"
                           ColumnDefinitions="*,Auto,Auto,Auto"
                           ColumnSpacing="8">
-                        <Label Grid.Column="0"
+                            <Label Grid.Column="0"
                                Text="{Binding ViewerCount, StringFormat='👥 {0} viewers'}"
                                FontSize="13"
                                TextColor="{DynamicResource SecondaryTextColor}"
                                VerticalOptions="Center"/>
 
-                        <Button Grid.Column="1"
+                            <Button Grid.Column="1"
                                 Text="💬"
                                 Command="{Binding ToggleChatCommand}"
                                 WidthRequest="40"
@@ -166,7 +167,7 @@
                                 Padding="0"
                                 FontSize="18"/>
 
-                        <Button Grid.Column="2"
+                            <Button Grid.Column="2"
                                 Text="🎤"
                                 Command="{Binding ToggleMicCommand}"
                                 WidthRequest="40"
@@ -174,17 +175,17 @@
                                 CornerRadius="20"
                                 Padding="0"
                                 FontSize="18">
-                            <Button.Triggers>
-                                <DataTrigger TargetType="Button" 
+                                <Button.Triggers>
+                                    <DataTrigger TargetType="Button" 
                                            Binding="{Binding IsMicMuted}" 
                                            Value="True">
-                                    <Setter Property="BackgroundColor" Value="{DynamicResource DangerColor}"/>
-                                    <Setter Property="Text" Value="🔇"/>
-                                </DataTrigger>
-                            </Button.Triggers>
-                        </Button>
+                                        <Setter Property="BackgroundColor" Value="{DynamicResource DangerColor}"/>
+                                        <Setter Property="Text" Value="🔇"/>
+                                    </DataTrigger>
+                                </Button.Triggers>
+                            </Button>
 
-                        <Button Grid.Column="3"
+                            <Button Grid.Column="3"
                                 Text="📢"
                                 Command="{Binding ToggleSpeakerCommand}"
                                 WidthRequest="40"
@@ -192,158 +193,160 @@
                                 CornerRadius="20"
                                 Padding="0"
                                 FontSize="18">
-                            <Button.Triggers>
-                                <DataTrigger TargetType="Button" 
+                                <Button.Triggers>
+                                    <DataTrigger TargetType="Button" 
                                            Binding="{Binding IsSpeakerMuted}" 
                                            Value="True">
-                                    <Setter Property="BackgroundColor" Value="{DynamicResource DangerColor}"/>
-                                    <Setter Property="Text" Value="🔇"/>
-                                </DataTrigger>
-                            </Button.Triggers>
-                        </Button>
+                                        <Setter Property="BackgroundColor" Value="{DynamicResource DangerColor}"/>
+                                        <Setter Property="Text" Value="🔇"/>
+                                    </DataTrigger>
+                                </Button.Triggers>
+                            </Button>
+                        </Grid>
                     </Grid>
-                </Grid>
-            </Border>
+                </Border>
 
-            <!-- Participants Panel -->
-            <Border Grid.Row="1"
+                <!-- Participants Panel -->
+                <Border Grid.Row="1"
                     BackgroundColor="{DynamicResource CardBackgroundColor}"
                     Stroke="{DynamicResource BorderColor}"
                     StrokeThickness="1"
                     StrokeShape="RoundRectangle 12">
 
-                <Grid RowDefinitions="Auto,*">
-                    <!-- Participants Header -->
-                    <Grid Grid.Row="0" 
+                    <Grid RowDefinitions="Auto,*">
+                        <!-- Participants Header -->
+                        <Grid Grid.Row="0" 
                           Padding="15"
                           ColumnDefinitions="*,Auto">
-                        <VerticalStackLayout Spacing="2">
-                            <Label Text="Participants"
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="Participants"
                                    FontSize="16"
                                    FontAttributes="Bold"
                                    TextColor="{DynamicResource PrimaryTextColor}"/>
-                            <Label Text="{Binding ParticipantCount, StringFormat='{0} in auditorium'}"
+                                <Label Text="{Binding ParticipantCount, StringFormat='{0} in auditorium'}"
                                    FontSize="12"
                                    TextColor="{DynamicResource SecondaryTextColor}"/>
-                        </VerticalStackLayout>
+                            </VerticalStackLayout>
 
-                        <Button Grid.Column="1"
+                            <Button Grid.Column="1"
                                 Text="🚪 Leave"
                                 Command="{Binding LeaveAuditoriumCommand}"
                                 BackgroundColor="{DynamicResource DangerColor}"
                                 Padding="12,6"
                                 FontSize="12"
                                 VerticalOptions="Center"/>
-                    </Grid>
+                        </Grid>
 
-                    <!-- Participants List -->
-                    <CollectionView Grid.Row="1"
+                        <!-- Participants List -->
+                        <CollectionView Grid.Row="1"
                                    ItemsSource="{Binding Participants}"
                                    EmptyView="No participants yet"
                                    Margin="10">
-                        <CollectionView.ItemsLayout>
-                            <GridItemsLayout Orientation="Vertical" Span="3" />
-                        </CollectionView.ItemsLayout>
+                            <CollectionView.ItemsLayout>
+                                <GridItemsLayout Orientation="Vertical" Span="3" />
+                            </CollectionView.ItemsLayout>
 
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Border Margin="5"
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="5"
                                        Padding="10"
                                        BackgroundColor="{DynamicResource PageBackgroundColor}"
                                        Stroke="{DynamicResource BorderColor}"
                                        StrokeThickness="1"
                                        StrokeShape="RoundRectangle 8">
-                                    <Border.Triggers>
-                                        <DataTrigger TargetType="Border" 
+                                        <Border.Triggers>
+                                            <DataTrigger TargetType="Border" 
                                                    Binding="{Binding IsSpeaking}" 
                                                    Value="True">
-                                            <Setter Property="Stroke" Value="{DynamicResource SuccessColor}"/>
-                                            <Setter Property="StrokeThickness" Value="2"/>
-                                        </DataTrigger>
-                                    </Border.Triggers>
+                                                <Setter Property="Stroke" Value="{DynamicResource SuccessColor}"/>
+                                                <Setter Property="StrokeThickness" Value="2"/>
+                                            </DataTrigger>
+                                        </Border.Triggers>
 
-                                    <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
-                                        <!-- Avatar -->
-                                        <Border WidthRequest="50"
+                                        <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
+                                            <!-- Avatar -->
+                                            <Border WidthRequest="50"
                                                HeightRequest="50"
                                                StrokeShape="RoundRectangle 25"
                                                BackgroundColor="{DynamicResource PrimaryColor}">
-                                            <Label Text="{Binding Avatar}"
+                                                <Label Text="{Binding Avatar}"
                                                    FontSize="28"
                                                    HorizontalOptions="Center"
                                                    VerticalOptions="Center"/>
-                                        </Border>
+                                            </Border>
 
-                                        <!-- Name -->
-                                        <Label Text="{Binding Name}"
+                                            <!-- Name -->
+                                            <Label Text="{Binding Name}"
                                                FontSize="12"
                                                HorizontalOptions="Center"
                                                LineBreakMode="TailTruncation"
                                                MaxLines="1"
                                                TextColor="{DynamicResource PrimaryTextColor}"/>
 
-                                        <!-- Status Icons -->
-                                        <HorizontalStackLayout Spacing="5" HorizontalOptions="Center">
-                                            <Label Text="🎤"
+                                            <!-- Status Icons -->
+                                            <HorizontalStackLayout Spacing="5" HorizontalOptions="Center">
+                                                <Label Text="🎤"
                                                    FontSize="12"
                                                    IsVisible="{Binding IsMicOn}"/>
-                                            <Label Text="🔇"
+                                                <Label Text="🔇"
                                                    FontSize="12"
                                                    IsVisible="{Binding IsMicOn, Converter={StaticResource InvertedBoolConverter}}"/>
-                                            <Label Text="👑"
+                                                <Label Text="👑"
                                                    FontSize="12"
                                                    IsVisible="{Binding IsPresenter}"/>
-                                        </HorizontalStackLayout>
-                                    </VerticalStackLayout>
-                                </Border>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </Grid>
-            </Border>
-        </Grid>
+                                            </HorizontalStackLayout>
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </Grid>
+                </Border>
+            </Grid>
 
-        <!-- Session Controls Footer -->
-        <Border Grid.Row="2"
+            <!-- Session Controls Footer -->
+            <Border Grid.Row="2"
                 BackgroundColor="{DynamicResource CardBackgroundColor}"
                 Stroke="{DynamicResource BorderColor}"
                 StrokeThickness="1"
                 Padding="15"
                 StrokeShape="RoundRectangle 12">
 
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
-                <!-- Session Info -->
-                <VerticalStackLayout Spacing="3">
-                    <Label Text="{Binding SessionName, TargetNullValue='No Active Session'}"
+                <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
+                    <!-- Session Info -->
+                    <VerticalStackLayout Spacing="3">
+                        <Label Text="{Binding SessionName, TargetNullValue='No Active Session'}"
                            FontSize="14"
                            FontAttributes="Bold"
                            TextColor="{DynamicResource PrimaryTextColor}"/>
-                    <Label Text="{Binding SessionDuration}"
+                        <Label Text="{Binding SessionDuration}"
                            FontSize="12"
                            TextColor="{DynamicResource SecondaryTextColor}"/>
-                </VerticalStackLayout>
+                    </VerticalStackLayout>
 
-                <!-- Create/Join Session -->
-                <Button Grid.Column="1"
+                    <!-- Create/Join Session -->
+                    <Button Grid.Column="1"
                         Text="➕ Create Session"
                         Command="{Binding CreateSessionCommand}"
                         IsVisible="{Binding IsSessionActive, Converter={StaticResource InvertedBoolConverter}}"
                         Padding="15,8"/>
 
-                <Button Grid.Column="2"
+                    <Button Grid.Column="2"
                         Text="🚪 Join Session"
                         Command="{Binding JoinSessionCommand}"
                         IsVisible="{Binding IsSessionActive, Converter={StaticResource InvertedBoolConverter}}"
                         Padding="15,8"/>
 
-                <!-- End Session -->
-                <Button Grid.Column="3"
+                    <!-- End Session -->
+                    <Button Grid.Column="3"
                         Text="❌ End Session"
                         Command="{Binding EndSessionCommand}"
                         IsVisible="{Binding IsSessionActive}"
                         BackgroundColor="{DynamicResource DangerColor}"
                         Padding="15,8"/>
-            </Grid>
-        </Border>
-    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </ScrollView>
+
 </ContentPage>
