@@ -4,237 +4,349 @@
              x:Class="Proximity.Pages.Tools.RoomsPage"
              Title="Rooms">
 
-    <Grid RowDefinitions="Auto,*" Padding="20" RowSpacing="15">
+    <Grid>
+        <!-- Main Content -->
+        <Grid RowDefinitions="Auto,*" Padding="20" RowSpacing="15">
 
-        <!-- Header with Create Room Button -->
-        <Border Grid.Row="0"
-                BackgroundColor="{DynamicResource CardBackgroundColor}"
-                Stroke="{DynamicResource PrimaryColor}"
-                StrokeThickness="1"
-                Padding="20"
-                StrokeShape="RoundRectangle 12">
+            <!-- Header with Create Room Button -->
+            <Border Grid.Row="0"
+                    BackgroundColor="{DynamicResource CardBackgroundColor}"
+                    Stroke="{DynamicResource PrimaryColor}"
+                    StrokeThickness="1"
+                    Padding="20"
+                    StrokeShape="RoundRectangle 12">
 
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="15">
-                <VerticalStackLayout Spacing="5">
-                    <Label Text="Group Channels"
-                           FontSize="22"
-                           FontAttributes="Bold"
-                           TextColor="{DynamicResource PrimaryTextColor}"/>
-                    <Label Text="Create or join multi-user chat rooms with whiteboard and voice"
-                           FontSize="13"
-                           TextColor="{DynamicResource SecondaryTextColor}"/>
-                </VerticalStackLayout>
-
-                <Button Grid.Column="1"
-                        Text="➕ Create"
-                        Command="{Binding CreateRoomCommand}"
-                        VerticalOptions="Center"
-                        Style="{StaticResource HoverButtonStyle}"
-                        Padding="20,10"
-                        FontSize="15"
-                        FontAttributes="Bold"/>
-            </Grid>
-        </Border>
-
-        <!-- Tabs: Available Rooms / My Rooms -->
-        <Border Grid.Row="1"
-                BackgroundColor="{DynamicResource CardBackgroundColor}"
-                Stroke="{DynamicResource BorderColor}"
-                StrokeThickness="1"
-                StrokeShape="RoundRectangle 12">
-
-            <Grid RowDefinitions="Auto,*">
-                <!-- Tab Headers -->
-                <Grid Grid.Row="0" 
-                      ColumnDefinitions="*,*" 
-                      Padding="0"
-                      ColumnSpacing="0">
-                    <Border Grid.Column="0" 
-                            Padding="15"
-                            BackgroundColor="Transparent"
-                            StrokeThickness="0">
-                        <Border.Triggers>
-                            <DataTrigger TargetType="Border" 
-                                       Binding="{Binding SelectedTab}" 
-                                       Value="Available">
-                                <Setter Property="BackgroundColor" Value="{DynamicResource PrimaryColor}"/>
-                            </DataTrigger>
-                        </Border.Triggers>
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding SelectTabCommand}" 
-                                                CommandParameter="Available"/>
-                        </Border.GestureRecognizers>
-                        <Label Text="Available Rooms"
-                               FontSize="15"
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="15">
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="Group Channels"
+                               FontSize="22"
                                FontAttributes="Bold"
-                               HorizontalOptions="Center"
                                TextColor="{DynamicResource PrimaryTextColor}"/>
-                    </Border>
+                        <Label Text="Create or join multi-user chat rooms with whiteboard and voice"
+                               FontSize="13"
+                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                    </VerticalStackLayout>
 
-                    <Border Grid.Column="1" 
-                            Padding="15"
-                            BackgroundColor="Transparent"
-                            StrokeThickness="0">
-                        <Border.Triggers>
-                            <DataTrigger TargetType="Border" 
-                                       Binding="{Binding SelectedTab}" 
-                                       Value="MyRooms">
-                                <Setter Property="BackgroundColor" Value="{DynamicResource PrimaryColor}"/>
-                            </DataTrigger>
-                        </Border.Triggers>
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Command="{Binding SelectTabCommand}" 
-                                                CommandParameter="MyRooms"/>
-                        </Border.GestureRecognizers>
-                        <Label Text="My Rooms"
-                               FontSize="15"
-                               FontAttributes="Bold"
-                               HorizontalOptions="Center"
-                               TextColor="{DynamicResource PrimaryTextColor}"/>
-                    </Border>
+                    <Button Grid.Column="1"
+                            Text="➕ Create"
+                            Clicked="OnCreateRoomClicked"
+                            VerticalOptions="Center"
+                            Style="{StaticResource HoverButtonStyle}"
+                            Padding="20,10"
+                            FontSize="15"
+                            FontAttributes="Bold"/>
                 </Grid>
+            </Border>
 
-                <!-- Rooms List -->
-                <CollectionView Grid.Row="1"
-                               ItemsSource="{Binding DisplayedRooms}"
-                               EmptyView="No rooms available. Create one to get started!"
-                               Margin="10">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate>
-                            <Border Margin="10,8"
-                                    Padding="18"
-                                    BackgroundColor="{DynamicResource PageBackgroundColor}"
-                                    Stroke="{DynamicResource BorderColor}"
-                                    StrokeThickness="1"
-                                    StrokeShape="RoundRectangle 12">
-                                <Border.Triggers>
-                                    <DataTrigger TargetType="Border" 
-                                               Binding="{Binding IsJoined}" 
-                                               Value="True">
-                                        <Setter Property="Stroke" Value="{DynamicResource SuccessColor}"/>
-                                        <Setter Property="StrokeThickness" Value="2"/>
-                                    </DataTrigger>
-                                </Border.Triggers>
+            <!-- Tabs: Available Rooms / My Rooms -->
+            <Border Grid.Row="1"
+                    BackgroundColor="{DynamicResource CardBackgroundColor}"
+                    Stroke="{DynamicResource BorderColor}"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 12">
 
-                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="15">
-                                    <!-- Room Icon -->
-                                    <Border Grid.Column="0"
-                                            WidthRequest="60"
-                                            HeightRequest="60"
-                                            StrokeShape="RoundRectangle 30"
-                                            StrokeThickness="0"
-                                            BackgroundColor="{DynamicResource PrimaryColor}">
-                                        <Label Text="{Binding RoomIcon, TargetNullValue='🏠'}"
-                                               FontSize="32"
-                                               HorizontalOptions="Center"
-                                               VerticalOptions="Center"/>
-                                    </Border>
+                <Grid RowDefinitions="Auto,*">
+                    <!-- Tab Headers -->
+                    <Grid Grid.Row="0" 
+                          ColumnDefinitions="*,*" 
+                          Padding="0"
+                          ColumnSpacing="0">
+                        <Border Grid.Column="0" 
+                                Padding="15"
+                                BackgroundColor="Transparent"
+                                StrokeThickness="0">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" 
+                                           Binding="{Binding SelectedTab}" 
+                                           Value="Available">
+                                    <Setter Property="BackgroundColor" Value="{DynamicResource PrimaryColor}"/>
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SelectTabCommand}" 
+                                                    CommandParameter="Available"/>
+                            </Border.GestureRecognizers>
+                            <Label Text="Available Rooms"
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   HorizontalOptions="Center"
+                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+                        </Border>
 
-                                    <!-- Room Info -->
-                                    <VerticalStackLayout Grid.Column="1" 
-                                                        Spacing="6" 
-                                                        VerticalOptions="Center">
-                                        <Label Text="{Binding RoomName}"
-                                               FontSize="18"
-                                               FontAttributes="Bold"
-                                               TextColor="{DynamicResource PrimaryTextColor}"/>
+                        <Border Grid.Column="1" 
+                                Padding="15"
+                                BackgroundColor="Transparent"
+                                StrokeThickness="0">
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" 
+                                           Binding="{Binding SelectedTab}" 
+                                           Value="MyRooms">
+                                    <Setter Property="BackgroundColor" Value="{DynamicResource PrimaryColor}"/>
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding SelectTabCommand}" 
+                                                    CommandParameter="MyRooms"/>
+                            </Border.GestureRecognizers>
+                            <Label Text="My Rooms"
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   HorizontalOptions="Center"
+                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+                        </Border>
+                    </Grid>
 
-                                        <Label Text="{Binding Description}"
-                                               FontSize="13"
-                                               TextColor="{DynamicResource SecondaryTextColor}"/>
+                    <!-- Rooms List -->
+                    <CollectionView Grid.Row="1"
+                                   ItemsSource="{Binding DisplayedRooms}"
+                                   EmptyView="No rooms available. Create one to get started!"
+                                   Margin="10">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="10,8"
+                                        Padding="18"
+                                        BackgroundColor="{DynamicResource PageBackgroundColor}"
+                                        Stroke="{DynamicResource BorderColor}"
+                                        StrokeThickness="1"
+                                        StrokeShape="RoundRectangle 12">
+                                    <Border.Triggers>
+                                        <DataTrigger TargetType="Border" 
+                                                   Binding="{Binding IsJoined}" 
+                                                   Value="True">
+                                            <Setter Property="Stroke" Value="{DynamicResource SuccessColor}"/>
+                                            <Setter Property="StrokeThickness" Value="2"/>
+                                        </DataTrigger>
+                                    </Border.Triggers>
 
-                                        <HorizontalStackLayout Spacing="15">
-                                            <HorizontalStackLayout Spacing="5">
-                                                <Label Text="👥"
-                                                       FontSize="12"/>
-                                                <Label Text="{Binding MemberCount, StringFormat='{0} members'}"
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="15">
+                                        <!-- Room Icon -->
+                                        <Border Grid.Column="0"
+                                                WidthRequest="60"
+                                                HeightRequest="60"
+                                                StrokeShape="RoundRectangle 30"
+                                                StrokeThickness="0"
+                                                BackgroundColor="{DynamicResource PrimaryColor}">
+                                            <Label Text="{Binding RoomIcon, TargetNullValue='🏠'}"
+                                                   FontSize="32"
+                                                   HorizontalOptions="Center"
+                                                   VerticalOptions="Center"/>
+                                        </Border>
+
+                                        <!-- Room Info -->
+                                        <VerticalStackLayout Grid.Column="1" 
+                                                            Spacing="6" 
+                                                            VerticalOptions="Center">
+                                            <Label Text="{Binding RoomName}"
+                                                   FontSize="18"
+                                                   FontAttributes="Bold"
+                                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                                            <Label Text="{Binding Description}"
+                                                   FontSize="13"
+                                                   TextColor="{DynamicResource SecondaryTextColor}"/>
+
+                                            <HorizontalStackLayout Spacing="15">
+                                                <HorizontalStackLayout Spacing="5">
+                                                    <Label Text="👥" FontSize="12"/>
+                                                    <Label Text="{Binding MemberCount, StringFormat='{0} members'}"
+                                                           FontSize="12"
+                                                           TextColor="{DynamicResource TertiaryTextColor}"/>
+                                                </HorizontalStackLayout>
+
+                                                <Label Text="•" FontSize="12" TextColor="{DynamicResource TertiaryTextColor}"/>
+
+                                                <Label Text="{Binding CreatedBy, StringFormat='by {0}'}"
                                                        FontSize="12"
                                                        TextColor="{DynamicResource TertiaryTextColor}"/>
                                             </HorizontalStackLayout>
 
-                                            <Label Text="•" 
-                                                   FontSize="12"
-                                                   TextColor="{DynamicResource TertiaryTextColor}"/>
+                                            <!-- Features -->
+                                            <HorizontalStackLayout Spacing="8">
+                                                <Border Padding="6,3"
+                                                       BackgroundColor="{DynamicResource AccentColor}"
+                                                       StrokeThickness="0"
+                                                       StrokeShape="RoundRectangle 4"
+                                                       IsVisible="{Binding HasVoice}">
+                                                    <Label Text="🎤 Voice" FontSize="10" TextColor="White"/>
+                                                </Border>
 
-                                            <Label Text="{Binding CreatedBy, StringFormat='by {0}'}"
-                                                   FontSize="12"
-                                                   TextColor="{DynamicResource TertiaryTextColor}"/>
-                                        </HorizontalStackLayout>
+                                                <Border Padding="6,3"
+                                                       BackgroundColor="{DynamicResource SecondaryColor}"
+                                                       StrokeThickness="0"
+                                                       StrokeShape="RoundRectangle 4"
+                                                       IsVisible="{Binding HasWhiteboard}">
+                                                    <Label Text="✏️ Whiteboard" FontSize="10" TextColor="White"/>
+                                                </Border>
 
-                                        <!-- Features -->
-                                        <HorizontalStackLayout Spacing="8">
-                                            <Border Padding="6,3"
-                                                   BackgroundColor="{DynamicResource AccentColor}"
-                                                   StrokeThickness="0"
-                                                   StrokeShape="RoundRectangle 4"
-                                                   IsVisible="{Binding HasVoice}">
-                                                <Label Text="🎤 Voice"
-                                                       FontSize="10"
-                                                       TextColor="White"/>
-                                            </Border>
+                                                <Border Padding="6,3"
+                                                       BackgroundColor="{DynamicResource WarningColor}"
+                                                       StrokeThickness="0"
+                                                       StrokeShape="RoundRectangle 4"
+                                                       IsVisible="{Binding IsPrivate}">
+                                                    <Label Text="🔒 Private" FontSize="10" TextColor="White"/>
+                                                </Border>
+                                            </HorizontalStackLayout>
+                                        </VerticalStackLayout>
 
-                                            <Border Padding="6,3"
-                                                   BackgroundColor="{DynamicResource SecondaryColor}"
-                                                   StrokeThickness="0"
-                                                   StrokeShape="RoundRectangle 4"
-                                                   IsVisible="{Binding HasWhiteboard}">
-                                                <Label Text="✏️ Whiteboard"
-                                                       FontSize="10"
-                                                       TextColor="White"/>
-                                            </Border>
+                                        <!-- Action Buttons -->
+                                        <VerticalStackLayout Grid.Column="2" Spacing="8" VerticalOptions="Center">
+                                            <Button Text="Join"
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.JoinRoomCommand}"
+                                                    CommandParameter="{Binding .}"
+                                                    IsVisible="{Binding IsJoined, Converter={StaticResource InvertedBoolConverter}}"
+                                                    Style="{StaticResource HoverButtonStyle}"
+                                                    Padding="15,8"
+                                                    MinimumWidthRequest="85"
+                                                    FontSize="13"/>
 
-                                            <Border Padding="6,3"
-                                                   BackgroundColor="{DynamicResource WarningColor}"
-                                                   StrokeThickness="0"
-                                                   StrokeShape="RoundRectangle 4"
-                                                   IsVisible="{Binding IsPrivate}">
-                                                <Label Text="🔒 Private"
-                                                       FontSize="10"
-                                                       TextColor="White"/>
-                                            </Border>
-                                        </HorizontalStackLayout>
-                                    </VerticalStackLayout>
+                                            <Button Text="Leave"
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.LeaveRoomCommand}"
+                                                    CommandParameter="{Binding .}"
+                                                    IsVisible="{Binding IsJoined}"
+                                                    BackgroundColor="{DynamicResource DangerColor}"
+                                                    Padding="15,8"
+                                                    MinimumWidthRequest="85"
+                                                    FontSize="13"/>
 
-                                    <!-- Action Buttons -->
-                                    <VerticalStackLayout Grid.Column="2" 
-                                                        Spacing="8"
-                                                        VerticalOptions="Center">
-                                        <!-- Join Button -->
-                                        <Button Text="Join"
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.JoinRoomCommand}"
-                                                CommandParameter="{Binding .}"
-                                                IsVisible="{Binding IsJoined, Converter={StaticResource InvertedBoolConverter}}"
-                                                Style="{StaticResource HoverButtonStyle}"
-                                                Padding="15,8"
-                                                MinimumWidthRequest="85"
-                                                FontSize="13"/>
+                                            <Button Text="Open"
+                                                    Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenRoomCommand}"
+                                                    CommandParameter="{Binding .}"
+                                                    IsEnabled="{Binding IsJoined}"
+                                                    Style="{StaticResource HoverButtonStyle}"
+                                                    Padding="15,8"
+                                                    MinimumWidthRequest="85"
+                                                    FontSize="13"/>
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </Grid>
+            </Border>
+        </Grid>
 
-                                        <!-- Leave Button -->
-                                        <Button Text="Leave"
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.LeaveRoomCommand}"
-                                                CommandParameter="{Binding .}"
-                                                IsVisible="{Binding IsJoined}"
-                                                BackgroundColor="{DynamicResource DangerColor}"
-                                                Padding="15,8"
-                                                MinimumWidthRequest="85"
-                                                FontSize="13"/>
+        <!-- Dialog Overlay (Initially Hidden) -->
+        <Grid x:Name="DialogOverlay" 
+              IsVisible="False"
+              BackgroundColor="#CC000000">
 
-                                        <!-- Open Button -->
-                                        <Button Text="Open"
-                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenRoomCommand}"
-                                                CommandParameter="{Binding .}"
-                                                IsEnabled="{Binding IsJoined}"
-                                                Style="{StaticResource HoverButtonStyle}"
-                                                Padding="15,8"
-                                                MinimumWidthRequest="85"
-                                                FontSize="13"/>
-                                    </VerticalStackLayout>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
-            </Grid>
-        </Border>
+            <Border BackgroundColor="{DynamicResource PageBackgroundColor}"
+                    Stroke="{DynamicResource PrimaryColor}"
+                    StrokeThickness="2"
+                    Padding="30"
+                    Margin="40"
+                    VerticalOptions="Center"
+                    HorizontalOptions="Center"              
+                    StrokeShape="RoundRectangle 15">
+
+                <ScrollView>
+                    <VerticalStackLayout Spacing="20">
+
+                        <!-- Dialog Header -->
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="Create New Room"
+                                   FontSize="24"
+                                   FontAttributes="Bold"
+                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+                            <Label Text="Fill in the details below to create a new group channel"
+                                   FontSize="13"
+                                   TextColor="{DynamicResource SecondaryTextColor}"/>
+                        </VerticalStackLayout>
+
+                        <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}"/>
+
+                        <!-- Room Name -->
+                        <VerticalStackLayout Spacing="5">
+                            <Label Text="Room Name *"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+                            <Entry x:Name="RoomNameEntry"
+                                   Text="{Binding NewRoomName, Mode=TwoWay}"
+                                   Placeholder="Enter room name (e.g., Team Chat)"
+                                   FontSize="16"
+                                   MaxLength="50"/>
+                        </VerticalStackLayout>
+
+                        <!-- Room Description -->
+                        <VerticalStackLayout Spacing="5">
+                            <Label Text="Description"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+                            <Editor Text="{Binding NewRoomDescription, Mode=TwoWay}"
+                                    Placeholder="Enter room description (optional)"
+                                    FontSize="14"
+                                    HeightRequest="80"
+                                    MaxLength="200"/>
+                        </VerticalStackLayout>
+
+                        <!-- Room Icon -->
+                        <VerticalStackLayout Spacing="5">
+                            <Label Text="Room Icon"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+                            <FlexLayout Wrap="Wrap" JustifyContent="Start" x:Name="RoomIconSelector">
+                                <RadioButton Content="🏠" Value="🏠" GroupName="RoomIcon" CheckedChanged="OnRoomIconChecked" Style="{StaticResource EmojiRadioButtonStyle}"/>
+                                <RadioButton Content="💬" Value="💬" GroupName="RoomIcon" CheckedChanged="OnRoomIconChecked" Style="{StaticResource EmojiRadioButtonStyle}"/>
+                                <RadioButton Content="🎮" Value="🎮" GroupName="RoomIcon" CheckedChanged="OnRoomIconChecked" Style="{StaticResource EmojiRadioButtonStyle}"/>
+                                <RadioButton Content="📚" Value="📚" GroupName="RoomIcon" CheckedChanged="OnRoomIconChecked" Style="{StaticResource EmojiRadioButtonStyle}"/>
+                                <RadioButton Content="⚽" Value="⚽" GroupName="RoomIcon" CheckedChanged="OnRoomIconChecked" Style="{StaticResource EmojiRadioButtonStyle}"/>
+                                <RadioButton Content="🎵" Value="🎵" GroupName="RoomIcon" CheckedChanged="OnRoomIconChecked" Style="{StaticResource EmojiRadioButtonStyle}"/>
+                                <RadioButton Content="🎬" Value="🎬" GroupName="RoomIcon" CheckedChanged="OnRoomIconChecked" Style="{StaticResource EmojiRadioButtonStyle}"/>
+                                <RadioButton Content="🌟" Value="🌟" GroupName="RoomIcon" CheckedChanged="OnRoomIconChecked" Style="{StaticResource EmojiRadioButtonStyle}"/>
+                            </FlexLayout>
+                        </VerticalStackLayout>
+
+                        <!-- Features -->
+                        <VerticalStackLayout Spacing="10">
+                            <Label Text="Features"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   TextColor="{DynamicResource PrimaryTextColor}"/>
+
+                            <HorizontalStackLayout Spacing="10">
+                                <CheckBox IsChecked="{Binding NewRoomHasVoice}" Color="{DynamicResource PrimaryColor}"/>
+                                <Label Text="🎤 Enable Voice Chat" FontSize="14" VerticalOptions="Center" TextColor="{DynamicResource PrimaryTextColor}"/>
+                            </HorizontalStackLayout>
+
+                            <HorizontalStackLayout Spacing="10">
+                                <CheckBox IsChecked="{Binding NewRoomHasWhiteboard}" Color="{DynamicResource PrimaryColor}"/>
+                                <Label Text="✏️ Enable Whiteboard" FontSize="14" VerticalOptions="Center" TextColor="{DynamicResource PrimaryTextColor}"/>
+                            </HorizontalStackLayout>
+
+                            <HorizontalStackLayout Spacing="10">
+                                <CheckBox IsChecked="{Binding NewRoomIsPrivate}" Color="{DynamicResource PrimaryColor}"/>
+                                <Label Text="🔒 Private Room (requires invitation)" FontSize="14" VerticalOptions="Center" TextColor="{DynamicResource PrimaryTextColor}"/>
+                            </HorizontalStackLayout>
+                        </VerticalStackLayout>
+
+                        <BoxView HeightRequest="1" Color="{DynamicResource BorderColor}" Margin="0,10,0,0"/>
+
+                        <!-- Action Buttons -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="15">
+                            <Button Grid.Column="0"
+                                    Text="Cancel"
+                                    BackgroundColor="{DynamicResource SecondaryColor}"
+                                    Clicked="OnDialogCancelClicked"
+                                    Padding="15,10"
+                                    FontSize="15"
+                                    FontAttributes="Bold"/>
+
+                            <Button Grid.Column="1"
+                                    Text="Create Room"
+                                    BackgroundColor="{DynamicResource PrimaryColor}"
+                                    Clicked="OnDialogCreateClicked"
+                                    Padding="15,10"
+                                    FontSize="15"
+                                    FontAttributes="Bold"/>
+                        </Grid>
+
+                    </VerticalStackLayout>
+                </ScrollView>
+            </Border>
+        </Grid>
     </Grid>
 </ContentPage>

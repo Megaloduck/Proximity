@@ -63,22 +63,61 @@ public class RoomsPageModel : INotifyPropertyChanged
         {
             System.Diagnostics.Debug.WriteLine("RoomsPageModel: CreateRoom called");
 
-            // Reset form values
-            NewRoomName = string.Empty;
-            NewRoomDescription = string.Empty;
-            NewRoomIcon = "🏠";
-            NewRoomHasVoice = true;
-            NewRoomHasWhiteboard = true;
-            NewRoomIsPrivate = false;
+            // Get room name
+            var roomName = await Application.Current.MainPage.DisplayPromptAsync(
+                "Create Room",
+                "Enter room name:",
+                "Create",
+                "Cancel",
+                placeholder: "e.g., Team Chat",
+                maxLength: 50);
 
-            // Show create room dialog (implemented in code-behind)
-            var createRoomPage = new Pages.Tools.CreateRoomDialog(this);
-            await Application.Current.MainPage.Navigation.PushModalAsync(createRoomPage);
+            if (string.IsNullOrWhiteSpace(roomName))
+            {
+                System.Diagnostics.Debug.WriteLine("RoomsPageModel: Room creation cancelled");
+                return;
+            }
+
+            // Get room description
+            var description = await Application.Current.MainPage.DisplayPromptAsync(
+                "Room Description",
+                "Enter room description (optional):",
+                "Continue",
+                "Cancel",
+                placeholder: "Brief description...",
+                maxLength: 200);
+
+            if (description == null) // User cancelled
+            {
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"RoomsPageModel: Creating room '{roomName}'");
+
+            // Create with default settings
+            var room = await _roomService.CreateRoomAsync(
+                roomName,
+                description ?? "No description",
+                "🏠", // Default icon
+                hasVoice: true,
+                hasWhiteboard: true,
+                isPrivate: false
+            );
+
+            System.Diagnostics.Debug.WriteLine($"RoomsPageModel: Room created successfully - {room.RoomName}");
+
+            // Refresh the current tab
+            SelectTab(SelectedTab);
+
+            await Application.Current.MainPage.DisplayAlert(
+                "Success",
+                $"Room '{roomName}' created successfully!",
+                "OK");
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"RoomsPageModel: Create room error: {ex.Message}");
-            await Application.Current.MainPage.DisplayAlert("Error", $"Failed to open create room dialog: {ex.Message}", "OK");
+            await Application.Current.MainPage.DisplayAlert("Error", $"Failed to create room: {ex.Message}", "OK");
         }
     }
 
