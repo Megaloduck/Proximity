@@ -69,6 +69,7 @@
 
                         <Button Grid.Column="1"
                                 Text="📺 Share Screen"
+                                
                                 Command="{Binding StartScreenShareCommand}"
                                 IsVisible="{Binding IsScreenSharing, Converter={StaticResource InvertedBoolConverter}}"
                                 Padding="12,6"

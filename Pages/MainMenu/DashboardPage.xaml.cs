@@ -10,9 +10,4 @@ public partial class DashboardPage : ContentPage
         InitializeComponent();
         BindingContext = new DashboardPageModel(discoveryService, chatService, voiceService);
     }
-
-    public DashboardPage()
-    {
-        InitializeComponent();
-    }
 }

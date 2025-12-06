@@ -22,14 +22,6 @@ namespace Proximity.PageModels
         private IAudioPlayer _loopbackPlayer;
         private bool _isLoopbackRunning = false;
 
-        // User Settings
-        private string _username;
-        public string Username
-        {
-            get => _username;
-            set { _username = value; OnPropertyChanged(); }
-        }
-
         // Appearance
         private bool _isDarkMode;
         public bool IsDarkMode
@@ -109,13 +101,11 @@ namespace Proximity.PageModels
             LoadAudioDevices();
 
             // Initialize commands
-            SaveUsernameCommand = new Command(async () => await SaveUsernameAsync());
             ToggleLoopbackCommand = new Command(async () => await ToggleLoopbackAsync());
         }
 
         private void LoadSettings()
         {
-            Username = Preferences.Get("UserName", _discoveryService?.MyDeviceName ?? "User");
             IsDarkMode = Preferences.Get("IsDarkMode", false);
             IsPushToTalk = Preferences.Get("IsPushToTalk", false);
         }
@@ -138,32 +128,6 @@ namespace Proximity.PageModels
 
             SelectedInputDevice = InputDevices[0];
             SelectedOutputDevice = OutputDevices[0];
-        }
-
-        private async Task SaveUsernameAsync()
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(Username))
-                {
-                    await Application.Current.MainPage.DisplayAlert(
-                        "Validation Error",
-                        "Username cannot be empty",
-                        "OK");
-                    return;
-                }
-
-                Preferences.Set("UserName", Username);
-
-                await Application.Current.MainPage.DisplayAlert(
-                    "Success",
-                    "Username saved successfully!",
-                    "OK");
-            }
-            catch (Exception ex)
-            {
-                await Application.Current.MainPage.DisplayAlert("Save Error", ex.Message, "OK");
-            }
         }
 
         private async Task ToggleLoopbackAsync()
@@ -247,12 +211,36 @@ namespace Proximity.PageModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
+        public void Cleanup()
+        {
+            try
+            {
+                // Stop and cleanup loopback test if running
+                if (_isLoopbackRunning)
+                {
+                    if (_loopbackRecorder?.IsRecording == true)
+                    {
+                        Task.Run(async () => await _loopbackRecorder.StopAsync()).Wait();
+                    }
+                    _loopbackPlayer?.Stop();
+                }
+
+                _loopbackRecorder = null;
+                _loopbackPlayer?.Dispose();
+                _loopbackPlayer = null;
+                _isLoopbackRunning = false;
+
+                System.Diagnostics.Debug.WriteLine("SettingsPageModel: Cleanup completed");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SettingsPageModel cleanup error: {ex.Message}");
+            }
+        }
+
         public void Dispose()
         {
-            // IAudioRecorder doesn't implement IDisposable
-            // Just set to null, the Plugin will handle cleanup
-            _loopbackRecorder = null;
-            _loopbackPlayer?.Dispose();
+            Cleanup();
         }
     }
 }

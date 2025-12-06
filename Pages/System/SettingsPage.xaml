@@ -6,37 +6,7 @@
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
-
-            <!-- User Settings -->
-            <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
-                    Stroke="{DynamicResource BorderColor}"
-                    StrokeThickness="1"
-                    Padding="20">
-                <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="12"/>
-                </Border.StrokeShape>
-
-                <VerticalStackLayout Spacing="15">
-                    <Label Text="User Settings"
-                           FontSize="20"
-                           FontAttributes="Bold"
-                           TextColor="{DynamicResource PrimaryTextColor}"/>
-
-                    <VerticalStackLayout Spacing="5">
-                        <Label Text="Username"
-                               FontSize="14"
-                               TextColor="{DynamicResource SecondaryTextColor}"/>
-                        <Entry Text="{Binding Username}"
-                               Placeholder="Enter your username"
-                               FontSize="16"/>
-                    </VerticalStackLayout>
-
-                    <Button Text="Save Username"
-                            Command="{Binding SaveUsernameCommand}"
-                            HorizontalOptions="End"/>
-                </VerticalStackLayout>
-            </Border>
-
+            
             <!-- Appearance -->
             <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
                     Stroke="{DynamicResource BorderColor}"

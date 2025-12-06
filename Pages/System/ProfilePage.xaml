@@ -140,7 +140,7 @@
                 </Border.StrokeShape>
 
                 <VerticalStackLayout Spacing="15">
-                    <Label Text="Live Preview"
+                    <Label Text="Profile Preview"
                            FontSize="20"
                            FontAttributes="Bold"
                            TextColor="{DynamicResource PrimaryTextColor}"/>
