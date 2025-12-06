@@ -12,7 +12,7 @@ using Plugin.Maui.Audio;
 
 namespace Proximity.PageModels
 {
-    public class SettingsPageModel : INotifyPropertyChanged
+    public class SettingsPageModel : INotifyPropertyChanged, IDisposable
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -21,6 +21,7 @@ namespace Proximity.PageModels
         private IAudioRecorder _loopbackRecorder;
         private IAudioPlayer _loopbackPlayer;
         private bool _isLoopbackRunning = false;
+        private bool _disposed = false;
 
         // Appearance
         private bool _isDarkMode;
@@ -85,7 +86,6 @@ namespace Proximity.PageModels
         public string LocalPeerId => _discoveryService?.MyDeviceId ?? "Not Available";
 
         // Commands
-        public ICommand SaveUsernameCommand { get; }
         public ICommand ToggleLoopbackCommand { get; }
 
         public SettingsPageModel(DiscoveryService discoveryService, VoiceService voiceService)
@@ -184,20 +184,11 @@ namespace Proximity.PageModels
             {
                 Preferences.Set("IsDarkMode", IsDarkMode);
 
-                // Apply theme
-                var mergedDictionaries = Application.Current.Resources.MergedDictionaries;
-                if (mergedDictionaries != null)
+                // Apply theme using UserAppTheme
+                if (Application.Current != null)
                 {
-                    mergedDictionaries.Clear();
-
-                    var themeUri = IsDarkMode
-                        ? "Resources/Themes/DarkTheme.xaml"
-                        : "Resources/Themes/LightTheme.xaml";
-
-                    mergedDictionaries.Add(new ResourceDictionary
-                    {
-                        Source = new Uri(themeUri, UriKind.Relative)
-                    });
+                    Application.Current.UserAppTheme = IsDarkMode ? AppTheme.Dark : AppTheme.Light;
+                    System.Diagnostics.Debug.WriteLine($"SettingsPageModel: Theme changed to {(IsDarkMode ? "Dark" : "Light")}");
                 }
             }
             catch (Exception ex)
@@ -213,6 +204,8 @@ namespace Proximity.PageModels
 
         public void Cleanup()
         {
+            if (_disposed) return;
+
             try
             {
                 // Stop and cleanup loopback test if running
@@ -240,7 +233,11 @@ namespace Proximity.PageModels
 
         public void Dispose()
         {
-            Cleanup();
+            if (!_disposed)
+            {
+                Cleanup();
+                _disposed = true;
+            }
         }
     }
 }

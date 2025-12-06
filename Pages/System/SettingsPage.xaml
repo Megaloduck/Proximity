@@ -6,7 +6,7 @@
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
-            
+
             <!-- Appearance -->
             <Border BackgroundColor="{DynamicResource CardBackgroundColor}"
                     Stroke="{DynamicResource BorderColor}"
@@ -117,7 +117,7 @@
                     Stroke="{DynamicResource BorderColor}"
                     StrokeThickness="1"
                     Padding="20" 
-                    StrokeShape ="RoundRectangle 12">       
+                    StrokeShape ="RoundRectangle 12">
 
                 <VerticalStackLayout Spacing="15">
                     <Label Text="Network Information"
@@ -129,7 +129,7 @@
                           RowDefinitions="Auto,Auto,Auto,Auto"
                           RowSpacing="10"
                           ColumnSpacing="15">
-                        
+
                         <!-- Discovery Port -->
                         <Label Grid.Row="0" Grid.Column="0" 
                                Text="Discovery Port:"
@@ -137,7 +137,7 @@
                         <Label Grid.Row="0" Grid.Column="1" 
                                Text="9001 (UDP)"
                                TextColor="{DynamicResource PrimaryTextColor}" />
-                        
+
                         <!-- Chat Port -->
                         <Label Grid.Row="1" Grid.Column="0" 
                                Text="Chat Port:"
@@ -145,7 +145,7 @@
                         <Label Grid.Row="1" Grid.Column="1" 
                                Text="9002 (TCP)"
                                TextColor="{DynamicResource PrimaryTextColor}" />
-                        
+
                         <!-- Voice Port -->
                         <Label Grid.Row="2" Grid.Column="0" 
                                Text="Voice Port:"
@@ -153,7 +153,7 @@
                         <Label Grid.Row="2" Grid.Column="1" 
                                Text="9003 (UDP)"
                                TextColor="{DynamicResource PrimaryTextColor}" />
-                        
+
                         <!-- Local Peer ID -->
                         <Label Grid.Row="3" Grid.Column="0" 
                                Text="Your ID:"
@@ -162,7 +162,7 @@
                                Text="{Binding LocalPeerId}"
                                TextColor="{DynamicResource PrimaryTextColor}" />
                     </Grid>
-                </VerticalStackLayout>                
+                </VerticalStackLayout>
             </Border>
 
             <!-- About -->

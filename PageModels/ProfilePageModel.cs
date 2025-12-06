@@ -10,6 +10,7 @@ namespace Proximity.PageModels
     public class ProfilePageModel : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
+        public event EventHandler PreviewUpdateRequested; // New event for preview updates
 
         private readonly DiscoveryService _discoveryService;
 
@@ -25,6 +26,7 @@ namespace Proximity.PageModels
                     _displayName = value;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(DisplayNameLength));
+                    RequestPreviewUpdate(); // Trigger preview update
                 }
             }
         }
@@ -40,6 +42,7 @@ namespace Proximity.PageModels
                     _statusMessage = value;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(StatusMessageLength));
+                    RequestPreviewUpdate(); // Trigger preview update
                 }
             }
         }
@@ -52,6 +55,7 @@ namespace Proximity.PageModels
             {
                 _selectedEmoji = value;
                 OnPropertyChanged();
+                RequestPreviewUpdate(); // Trigger preview update
             }
         }
 
@@ -86,9 +90,15 @@ namespace Proximity.PageModels
 
         private void LoadProfile()
         {
-            DisplayName = Preferences.Get("ProfileDisplayName", _discoveryService?.MyDeviceName ?? "User");
-            StatusMessage = Preferences.Get("ProfileStatusMessage", "Available");
-            SelectedEmoji = Preferences.Get("ProfileEmoji", "😀");
+            // Only load if something was previously saved - otherwise start empty
+            var savedName = Preferences.Get("ProfileDisplayName", string.Empty);
+            var savedStatus = Preferences.Get("ProfileStatusMessage", string.Empty);
+            var savedEmoji = Preferences.Get("ProfileEmoji", string.Empty);
+
+            // If user has never set a name, leave it empty (not device name)
+            DisplayName = string.IsNullOrEmpty(savedName) ? string.Empty : savedName;
+            StatusMessage = string.IsNullOrEmpty(savedStatus) ? string.Empty : savedStatus;
+            SelectedEmoji = string.IsNullOrEmpty(savedEmoji) ? "😀" : savedEmoji;
 
             // Ensure account created date exists
             if (!Preferences.ContainsKey("AccountCreatedDate"))
@@ -96,7 +106,7 @@ namespace Proximity.PageModels
                 Preferences.Set("AccountCreatedDate", DateTime.Now.ToString("yyyy-MM-dd"));
             }
 
-            System.Diagnostics.Debug.WriteLine($"ProfilePageModel: Loaded profile - Name: {DisplayName}, Emoji: {SelectedEmoji}");
+            System.Diagnostics.Debug.WriteLine($"ProfilePageModel: Loaded profile - Name: '{DisplayName}', Status: '{StatusMessage}', Emoji: '{SelectedEmoji}'");
         }
 
         private async Task SaveProfileAsync()
@@ -143,6 +153,11 @@ namespace Proximity.PageModels
                     ex.Message,
                     "OK");
             }
+        }
+
+        private void RequestPreviewUpdate()
+        {
+            PreviewUpdateRequested?.Invoke(this, EventArgs.Empty);
         }
 
         protected void OnPropertyChanged([CallerMemberName] string name = null)
