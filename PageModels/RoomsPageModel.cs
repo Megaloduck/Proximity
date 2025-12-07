@@ -151,8 +151,8 @@ public class RoomsPageModel : INotifyPropertyChanged
             // Refresh the current tab
             SelectTab(SelectedTab);
 
-            // Close the dialog
-            await Application.Current.MainPage.Navigation.PopModalAsync();
+            // Don't close dialog here - let the code-behind handle it
+            // The dialog will be closed in RoomsPage.xaml.cs after this returns
 
             await Application.Current.MainPage.DisplayAlert(
                 "Success",
@@ -162,6 +162,7 @@ public class RoomsPageModel : INotifyPropertyChanged
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"RoomsPageModel: Create room error: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"RoomsPageModel: Stack trace: {ex.StackTrace}");
             await Application.Current.MainPage.DisplayAlert("Error", $"Failed to create room: {ex.Message}", "OK");
         }
     }

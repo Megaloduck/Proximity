@@ -275,7 +275,8 @@
                                    FontSize="14"
                                    FontAttributes="Bold"
                                    TextColor="{DynamicResource PrimaryTextColor}"/>
-                            <Editor Text="{Binding NewRoomDescription, Mode=TwoWay}"
+                            <Editor x:Name="RoomDescriptionEditor"
+                                    Text="{Binding NewRoomDescription, Mode=TwoWay}"
                                     Placeholder="Enter room description (optional)"
                                     FontSize="14"
                                     HeightRequest="80"
